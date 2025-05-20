@@ -53,6 +53,7 @@ final class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -75,6 +76,15 @@ final class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => 'string',
         ];
+    }
+    
+    /**
+     * Get the student profile associated with the user.
+     */
+    public function studentProfile()
+    {
+        return $this->hasOne(StudentProfile::class);
     }
 }
