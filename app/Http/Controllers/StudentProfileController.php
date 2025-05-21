@@ -38,9 +38,9 @@ final class StudentProfileController extends Controller
         $validated = $request->validate([
             'address' => ['required', 'string', 'max:255'],
             'city' => ['required', 'string', 'max:255'],
-            'state' => ['required', 'string', 'max:255'],
-            'zip_code' => ['required', 'string', 'max:20'],
-            'phone_number' => ['required', 'string', 'max:20'],
+            'state' => ['required', 'string', 'max:255'], // Province in the Philippines
+            'zip_code' => ['required', 'string', 'max:10'], // Philippines postal code is typically 4 digits
+            'phone_number' => ['required', 'string'], // Philippines mobile format
             'school_type' => ['required', 'in:high_school,college'],
             'school_level' => ['required', 'string', 'max:255'],
             'school_name' => ['required', 'string', 'max:255'],

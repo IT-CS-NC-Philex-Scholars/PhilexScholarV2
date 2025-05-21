@@ -13,6 +13,10 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
+import type { } from '@/types/google-maps';
+
+// @ts-ignore - Disable implicit any errors for this file
 import { 
   User, Home, School, Phone, MapPin, Mail, BookOpen, 
   GraduationCap, Building, Save, AlertCircle, CheckCircle, HelpCircle 
@@ -219,7 +223,7 @@ export default function Edit({ profile }: ProfileProps) {
                         <div className="space-y-1">
                           <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Why this matters</h3>
                           <p className="text-xs text-amber-700 dark:text-amber-400">
-                            Keeping your profile updated helps qualify you for more scholarship opportunities. Many scholarships have specific eligibility requirements.  
+                          Keeping your profile updated helps qualify you for more scholarship opportunities in the Philippines. Many scholarships have specific eligibility requirements based on your location and educational institution.
                           </p>
                         </div>
                       </div>
@@ -247,101 +251,79 @@ export default function Edit({ profile }: ProfileProps) {
                     
                     <CardContent className="space-y-4">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="address" className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                            Street Address
-                            {renderTooltip('Enter your full street address including apartment or unit number if applicable.')}  
-                          </Label>
-                          <Input
-                            id="address"
-                            value={data.address}
-                            onChange={e => setData('address', e.target.value)}
-                            placeholder="123 Main Street, Apt 4B"
-                            required
-                          />
-                          {errors.address && (
-                            <div className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3.5 w-3.5" />
-                              {errors.address}
-                            </div>
-                          )}
-                        </div>
+                        <AddressAutocomplete
+                          id="address"
+                          label="Street Address"
+                          icon={<MapPin className="h-3.5 w-3.5 text-muted-foreground" />}
+                          tooltipContent={renderTooltip('Enter your full street address including barangay and subdivision if applicable.')}
+                          value={data.address}
+                          onChange={(e) => setData('address', e.target.value)}
+                          placeholder="123 Rizal Avenue, Brgy. San Miguel"
+                          addressType="street"
+                          formSetters={{
+                            setCity: (value) => setData('city', value),
+                            setProvince: (value) => setData('state', value),
+                            setPostalCode: (value) => setData('zip_code', value)
+                          }}
+                          error={errors.address}
+                          required
+                        />
 
-                        <div className="space-y-2">
-                          <Label htmlFor="city" className="flex items-center gap-1.5">
-                            <Building className="h-3.5 w-3.5 text-muted-foreground" />
-                            City
-                          </Label>
-                          <Input
-                            id="city"
-                            value={data.city}
-                            onChange={e => setData('city', e.target.value)}
-                            placeholder="Your City"
-                            required
-                          />
-                          {errors.city && (
-                            <div className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3.5 w-3.5" />
-                              {errors.city}
-                            </div>
-                          )}
-                        </div>
+                        <AddressAutocomplete
+                          id="city"
+                          label="City/Municipality"
+                          icon={<Building className="h-3.5 w-3.5 text-muted-foreground" />}
+                          tooltipContent={renderTooltip('Select your city or municipality')}
+                          value={data.city}
+                          onChange={(e) => setData('city', e.target.value)}
+                          placeholder="Select city/municipality"
+                          addressType="city"
+                          formSetters={{
+                            setProvince: (value) => setData('state', value),
+                          }}
+                          error={errors.city}
+                          required
+                        />
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="state" className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                            State
-                          </Label>
-                          <Input
-                            id="state"
-                            value={data.state}
-                            onChange={e => setData('state', e.target.value)}
-                            placeholder="CA"
-                            required
-                          />
-                          {errors.state && (
-                            <div className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3.5 w-3.5" />
-                              {errors.state}
-                            </div>
-                          )}
-                        </div>
+                        <AddressAutocomplete
+                          id="state"
+                          label="Province"
+                          icon={<MapPin className="h-3.5 w-3.5 text-muted-foreground" />}
+                          tooltipContent={renderTooltip('Select your province in the Philippines')}
+                          value={data.state}
+                          onChange={(e) => setData('state', e.target.value)}
+                          placeholder="Select province (e.g. Benguet, Cebu, Davao)"
+                          addressType="province"
+                          error={errors.state}
+                          required
+                        />
 
-                        <div className="space-y-2">
-                          <Label htmlFor="zip_code" className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                            Zip Code
-                          </Label>
-                          <Input
-                            id="zip_code"
-                            value={data.zip_code}
-                            onChange={e => setData('zip_code', e.target.value)}
-                            placeholder="90210"
-                            required
-                          />
-                          {errors.zip_code && (
-                            <div className="text-sm text-red-500 flex items-center gap-1">
-                              <AlertCircle className="h-3.5 w-3.5" />
-                              {errors.zip_code}
-                            </div>
-                          )}
-                        </div>
+                        <AddressAutocomplete
+                          id="zip_code"
+                          label="Zip Code"
+                          icon={<MapPin className="h-3.5 w-3.5 text-muted-foreground" />}
+                          value={data.zip_code}
+                          onChange={(e) => setData('zip_code', e.target.value)}
+                          placeholder="1000"
+                          addressType="postal_code"
+                          error={errors.zip_code}
+                          required
+                        />
                       </div>
 
                       <div className="space-y-2">
                         <Label htmlFor="phone_number" className="flex items-center gap-1.5">
                           <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                           Phone Number
-                          {renderTooltip('A phone number where scholarship providers can contact you if needed.')}  
+                          {renderTooltip('A mobile number where scholarship providers can contact you. Use format +63 or 09XX for Philippine numbers.')}
                         </Label>
                         <Input
                           id="phone_number"
                           value={data.phone_number}
                           onChange={e => setData('phone_number', e.target.value)}
-                          placeholder="(555) 123-4567"
+                          placeholder="+63 9123456789"
                           required
                         />
                         {errors.phone_number && (
@@ -445,7 +427,7 @@ export default function Edit({ profile }: ProfileProps) {
                           id="school_name"
                           value={data.school_name}
                           onChange={e => setData('school_name', e.target.value)}
-                          placeholder="University of California, Berkeley"
+                          placeholder="University of the Philippines"
                           required
                         />
                         {errors.school_name && (

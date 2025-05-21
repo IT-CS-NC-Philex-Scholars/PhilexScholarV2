@@ -34,6 +34,15 @@
 
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+        
+        <!-- Google Places API - Address Autocomplete Only -->
+        <script>
+            window.initGooglePlacesAutocomplete = function() {
+                // This callback will be called when the Places API is loaded
+                console.log('Places API initialized for address autocomplete');
+            };
+        </script>
+        <script src="https://maps.googleapis.com/maps/api/js?key={{ env('GOOGLE_MAPS_API_KEY') }}&libraries=places&callback=initGooglePlacesAutocomplete" async defer></script>
 
         @routes
         @viteReactRefresh
