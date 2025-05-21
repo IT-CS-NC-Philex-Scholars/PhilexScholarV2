@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ScholarshipController;
 use App\Http\Controllers\Admin\ApplicationController;
+use App\Http\Controllers\Admin\StudentController;
 use Illuminate\Support\Facades\Route;
 
 // Admin routes
@@ -21,4 +22,10 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::patch('/applications/{application}/status', [ApplicationController::class, 'updateStatus'])->name('applications.status.update');
     Route::patch('/documents/{document}/review', [ApplicationController::class, 'reviewDocument'])->name('documents.review');
     Route::patch('/service-reports/{report}/review', [ApplicationController::class, 'reviewServiceReport'])->name('service-reports.review');
+    Route::post('/applications/{application}/disbursements', [ApplicationController::class, 'createDisbursement'])->name('disbursements.store');
+    Route::patch('/disbursements/{disbursement}', [ApplicationController::class, 'updateDisbursement'])->name('disbursements.update');
+    
+    // Student management
+    Route::get('/students', [StudentController::class, 'index'])->name('students.index');
+    Route::get('/students/{student}', [StudentController::class, 'show'])->name('students.show');
 });

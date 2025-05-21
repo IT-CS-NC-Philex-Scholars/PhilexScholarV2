@@ -28,6 +28,9 @@ export interface StudentProfile {
   school_type: 'high_school' | 'college';
   school_level: string;
   school_name: string;
+  student_id?: string;
+  gpa?: number;
+  scholarshipApplications?: ScholarshipApplication[];
 }
 
 export interface ScholarshipProgram {
@@ -64,7 +67,10 @@ export interface ScholarshipApplication {
   submitted_at: string | null;
   reviewed_at: string | null;
   scholarshipProgram?: ScholarshipProgram;
+  studentProfile?: StudentProfile & { user?: User };
   documentUploads?: DocumentUpload[];
+  communityServiceReports?: CommunityServiceReport[];
+  disbursements?: Disbursement[];
 }
 
 export interface DocumentUpload {
@@ -83,11 +89,14 @@ export interface DocumentUpload {
 export interface CommunityServiceReport {
   id: number;
   scholarship_application_id: number;
+  organization_name: string;
   description: string;
-  days_completed: number;
+  hours: number;
+  service_date: string;
+  verification_document: string | null;
   status: string;
   rejection_reason: string | null;
-  submitted_at: string;
+  created_at: string;
   reviewed_at: string | null;
 }
 
@@ -98,5 +107,6 @@ export interface Disbursement {
   status: string;
   payment_method: string | null;
   reference_number: string | null;
-  disbursed_at: string | null;
+  disbursement_date: string;
+  notes: string | null;
 }

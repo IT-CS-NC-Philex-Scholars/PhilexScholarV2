@@ -44,6 +44,8 @@ final class StudentProfile extends Model
         'school_type',
         'school_level',
         'school_name',
+        'student_id',
+        'gpa',
     ];
     
     /**
@@ -55,6 +57,8 @@ final class StudentProfile extends Model
     {
         return [
             'school_type' => 'string',
+            'student_id' => 'string',
+            'gpa' => 'float',
         ];
     }
     

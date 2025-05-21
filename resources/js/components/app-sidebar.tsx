@@ -52,7 +52,7 @@ const adminNavItems: NavItem[] = [
     },
     {
         title: 'Students',
-        href: '/admin/students',
+        href: route('admin.students.index'),
         icon: Users,
     },
     {

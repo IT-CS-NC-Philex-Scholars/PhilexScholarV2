@@ -42,6 +42,7 @@ final class ScholarshipProgram extends Model
         'description',
         'total_budget',
         'per_student_budget',
+        'available_slots',
         'school_type_eligibility',
         'min_gpa',
         'min_units',

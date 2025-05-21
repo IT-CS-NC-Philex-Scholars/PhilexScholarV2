@@ -18,31 +18,51 @@ interface ScholarshipEditProps {
 }
 
 export default function Edit({ scholarship }: ScholarshipEditProps) {
-  // Track requirements being added/edited
+  // Safety check if scholarship data is incomplete
+  if (!scholarship) {
+    return (
+      <AppLayout>
+        <div className="p-4">
+          <div className="rounded-lg border p-8 text-center">
+            <h2 className="text-xl font-semibold mb-2">Scholarship not found</h2>
+            <p className="text-muted-foreground mb-4">The scholarship information could not be loaded.</p>
+            <Button asChild>
+              <a href={route('admin.scholarships.index')}>Return to Scholarships</a>
+            </Button>
+          </div>
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Track requirements being added/edited (adding safety check for undefined documentRequirements)
+  const documentRequirements = scholarship.documentRequirements || [];
   const [requirements, setRequirements] = useState<(DocumentRequirement & { isNew?: boolean, isDeleted?: boolean })[]>(
-    scholarship.documentRequirements.map(req => ({ ...req, isNew: false, isDeleted: false }))
+    documentRequirements.map(req => ({ ...req, isNew: false, isDeleted: false }))
   );
 
   const { data, setData, post, errors, processing } = useForm({
-    name: scholarship.name,
-    description: scholarship.description,
-    total_budget: scholarship.total_budget,
-    per_student_budget: scholarship.per_student_budget,
-    school_type_eligibility: scholarship.school_type_eligibility,
-    min_gpa: scholarship.min_gpa,
+    name: scholarship.name || '',
+    description: scholarship.description || '',
+    total_budget: scholarship.total_budget || 0,
+    per_student_budget: scholarship.per_student_budget || 0,
+    school_type_eligibility: scholarship.school_type_eligibility || 'both',
+    min_gpa: scholarship.min_gpa || 0,
     min_units: scholarship.min_units,
-    semester: scholarship.semester,
-    academic_year: scholarship.academic_year,
-    application_deadline: new Date(scholarship.application_deadline).toISOString().split('T')[0],
-    community_service_days: scholarship.community_service_days,
-    active: scholarship.active,
+    semester: scholarship.semester || '',
+    academic_year: scholarship.academic_year || '',
+    application_deadline: scholarship.application_deadline ? 
+      new Date(scholarship.application_deadline).toISOString().split('T')[0] : 
+      new Date().toISOString().split('T')[0],
+    community_service_days: scholarship.community_service_days || 0,
+    active: scholarship.active ?? true,
     documentRequirements: requirements,
   });
 
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin Dashboard', href: route('admin.dashboard') },
     { title: 'Scholarships', href: route('admin.scholarships.index') },
-    { title: scholarship.name, href: route('admin.scholarships.show', scholarship.id) },
+    { title: scholarship.name || 'Scholarship', href: route('admin.scholarships.show', scholarship.id) },
     { title: 'Edit' },
   ];
 
@@ -96,7 +116,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title={`Edit Scholarship: ${scholarship.name}`} />
+      <Head title={`Edit Scholarship: ${scholarship.name || 'Scholarship'}`} />
       
       <div className="p-4 max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold mb-6">Edit Scholarship Program</h1>

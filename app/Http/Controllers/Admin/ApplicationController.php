@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ScholarshipApplication;
 use App\Models\DocumentUpload;
 use App\Models\CommunityServiceReport;
+use App\Models\Disbursement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -131,5 +132,72 @@ final class ApplicationController extends Controller
         ]);
         
         return Redirect::back()->with('success', 'Service report review submitted successfully.');
+    }
+    
+    /**
+     * Create a new disbursement for an application.
+     */
+    public function createDisbursement(Request $request, ScholarshipApplication $application): RedirectResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'],
+            'payment_method' => ['required', 'string'],
+            'reference_number' => ['nullable', 'string'],
+            'disbursement_date' => ['required', 'date'],
+            'notes' => ['nullable', 'string'],
+            'status' => ['required', 'string'],
+        ]);
+        
+        $application->disbursements()->create([
+            'amount' => $validated['amount'],
+            'payment_method' => $validated['payment_method'],
+            'reference_number' => $validated['reference_number'],
+            'disbursement_date' => $validated['disbursement_date'],
+            'notes' => $validated['notes'],
+            'status' => $validated['status'],
+        ]);
+        
+        // Update application status if all disbursements are processed
+        if ($validated['status'] === 'processed') {
+            $application->update([
+                'status' => 'disbursement_processed',
+            ]);
+        }
+        
+        return Redirect::back()->with('success', 'Disbursement created successfully.');
+    }
+    
+    /**
+     * Update an existing disbursement.
+     */
+    public function updateDisbursement(Request $request, Disbursement $disbursement): RedirectResponse
+    {
+        $validated = $request->validate([
+            'amount' => ['required', 'numeric', 'min:1'],
+            'payment_method' => ['required', 'string'],
+            'reference_number' => ['nullable', 'string'],
+            'disbursement_date' => ['required', 'date'],
+            'notes' => ['nullable', 'string'],
+            'status' => ['required', 'string'],
+        ]);
+        
+        $disbursement->update([
+            'amount' => $validated['amount'],
+            'payment_method' => $validated['payment_method'],
+            'reference_number' => $validated['reference_number'],
+            'disbursement_date' => $validated['disbursement_date'],
+            'notes' => $validated['notes'],
+            'status' => $validated['status'],
+        ]);
+        
+        // Update application status if this is marked as processed
+        if ($validated['status'] === 'processed') {
+            $application = $disbursement->scholarshipApplication;
+            $application->update([
+                'status' => 'disbursement_processed',
+            ]);
+        }
+        
+        return Redirect::back()->with('success', 'Disbursement updated successfully.');
     }
 }
