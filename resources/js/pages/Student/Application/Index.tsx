@@ -43,7 +43,7 @@ const ApplicationCard = ({
       transition={{ delay: 0.05 * index, type: "spring", stiffness: 120, damping: 14 }}
       className="group"
     >
-      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all duration-300">
+      <div className="rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 mb-10">
         <div className="relative">
           {/* Progress bar */}
           <div className="absolute top-0 left-0 right-0 h-1">

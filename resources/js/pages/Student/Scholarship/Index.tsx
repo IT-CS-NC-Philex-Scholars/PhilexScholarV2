@@ -137,7 +137,7 @@ export default function Index({ scholarships, existingApplicationIds, hasProfile
           </motion.div>
           
           {/* Filters & Search */}
-          <motion.div variants={itemVariants} className="mb-6">
+          <motion.div variants={itemVariants} className="mb-5">
             <div className="p-4 rounded-xl border border-border bg-card shadow-sm">
               <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex-1">
@@ -227,7 +227,7 @@ export default function Index({ scholarships, existingApplicationIds, hasProfile
             </motion.div>
           ) : (
             <motion.div 
-              className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+              className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mb-22"
               variants={containerVariants}
             >
               {filteredScholarships.map((scholarship, index) => (

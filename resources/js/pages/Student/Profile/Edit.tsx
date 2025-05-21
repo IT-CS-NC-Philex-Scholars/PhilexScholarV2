@@ -230,7 +230,7 @@ export default function Edit({ profile }: ProfileProps) {
             </motion.div>
             
             {/* Main content area */}
-            <motion.div variants={itemVariants} className="md:col-span-5 space-y-6">
+            <motion.div variants={itemVariants} className="md:col-span-5 space-y-6 mb-22">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 {/* Personal Information Tab */}
                 <TabsContent value="personal" className="space-y-4 mt-0">
