@@ -82,8 +82,8 @@ export default function Edit({ profile }: ProfileProps) {
 
   // Different options based on school type
   const schoolLevelOptions = data.school_type === 'high_school'
-    ? ['Grade 9', 'Grade 10', 'Grade 11', 'Grade 12']
-    : ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
+    ? ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12']
+    : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Student Dashboard', href: route('student.dashboard') },
@@ -378,8 +378,8 @@ export default function Edit({ profile }: ProfileProps) {
                             <SelectValue placeholder="Select school type" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="high_school">High School</SelectItem>
-                            <SelectItem value="college">College / University</SelectItem>
+                          <SelectItem value="high_school">Junior/Senior High School (Grades 7-12)</SelectItem>
+                          <SelectItem value="college">College / University</SelectItem>
                           </SelectContent>
                         </Select>
                         {errors.school_type && (
@@ -392,16 +392,20 @@ export default function Edit({ profile }: ProfileProps) {
 
                       <div className="space-y-2">
                         <Label htmlFor="school_level" className="flex items-center gap-1.5">
-                          <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                          Grade Level
-                          {renderTooltip('Your current grade or year in school')}
-                        </Label>
+                        <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
+                        {data.school_type === 'high_school' ? 'Grade Level' : 'Year Level'}
+                        {renderTooltip(data.school_type === 'high_school' ? 
+                            'Your current grade level in K-12 (Grades 7-12)' : 
+                              'Your current year level in college/university (1st-6th Year)')}
+                          </Label>
                         <Select
                           value={data.school_level}
                           onValueChange={(value) => setData('school_level', value)}
                         >
                           <SelectTrigger className="w-full">
-                            <SelectValue placeholder="Select your grade level" />
+                            <SelectValue placeholder={data.school_type === 'high_school' ? 
+                              "Select your grade level" : 
+                              "Select your year level"} />
                           </SelectTrigger>
                           <SelectContent>
                             {schoolLevelOptions.map(level => (
