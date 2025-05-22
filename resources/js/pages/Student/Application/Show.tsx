@@ -281,7 +281,7 @@ export default function Show({
         
           {/* Main Content Tabs */}
           <motion.div variants={itemVariants}>
-            <Tabs defaultValue="overview" className="mb-6">
+            <Tabs defaultValue="overview" className="mb-22">
               <TabsList className="mb-6 w-full grid grid-cols-3 lg:w-auto lg:inline-flex bg-card/50 backdrop-blur-sm border border-border shadow-sm rounded-xl p-1 overflow-hidden">
                 <TabsTrigger value="overview" className="text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground rounded-lg transition-all">
                   <FileTextIcon className="h-4 w-4 mr-2" />

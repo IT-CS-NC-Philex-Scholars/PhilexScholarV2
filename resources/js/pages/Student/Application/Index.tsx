@@ -335,7 +335,7 @@ export default function Index({ applications }: ApplicationIndexProps) {
               </div>
             </motion.div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-8 mb-22">
               {/* Application Status Summary Cards */}
               <motion.div variants={itemVariants}>
                 <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
