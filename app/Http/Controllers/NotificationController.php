@@ -39,14 +39,16 @@ class NotificationController extends Controller
             $notification->markAsRead();
         }
 
-        return response()->json(['success' => true]);
+        return back()->with('success', 'Notification marked as read.');
+
     }
 
     public function markAllAsRead(Request $request)
     {
         $request->user()->unreadNotifications->markAsRead();
 
-        return response()->json(['success' => true]);
+        return back()->with('success', 'All notifications marked as read.');
+
     }
 
     public function delete(Request $request, $id)
@@ -58,15 +60,16 @@ class NotificationController extends Controller
 
         if ($notification) {
             $notification->delete();
+            return back()->with('success', 'Notification cleared.');
         }
 
-        return response()->json(['success' => true]);
+        return back()->with('error', 'Notification not found.');
     }
 
     public function deleteAll(Request $request)
     {
         $request->user()->notifications()->delete();
 
-        return response()->json(['success' => true]);
+        return back()->with('success', 'All notifications cleared.');
     }
 }

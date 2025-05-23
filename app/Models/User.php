@@ -9,6 +9,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 /**
  * @property int $id
@@ -41,7 +42,7 @@ final class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
-
+  use HasPushSubscriptions;
     use Notifiable;
 
     /**
@@ -79,7 +80,7 @@ final class User extends Authenticatable
             'role' => 'string',
         ];
     }
-    
+
     /**
      * Get the student profile associated with the user.
      */
