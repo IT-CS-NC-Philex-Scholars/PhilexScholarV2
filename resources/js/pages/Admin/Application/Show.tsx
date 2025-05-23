@@ -49,7 +49,7 @@ import {
     MessageSquare,
     XCircle,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
 interface ApplicationShowProps {
     application: ApplicationType & {
@@ -164,19 +164,29 @@ export default function Show({
     const {
         data: statusForm,
         setData: setStatusFormData,
-        post: postStatusUpdate,
+        patch: patchStatusUpdate,
         processing: statusProcessing,
         errors: statusErrors,
         reset: resetStatusForm,
+        recentlySuccessful: statusRecentlySuccessful,
     } = useForm({
         status: application.status || '',
         admin_notes: application.admin_notes || '',
     });
 
+    useEffect(() => {
+        if (isStatusModalOpen) {
+            setStatusFormData({
+                status: application.status || '',
+                admin_notes: application.admin_notes || '',
+            });
+        }
+    }, [isStatusModalOpen, application.status, application.admin_notes]);
+
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Admin Dashboard', href: route('admin.dashboard') },
         { title: 'Applications', href: route('admin.applications.index') },
-        { title: `Application #${application.id}` },
+        { title: 'Application #' + application.id },
     ];
 
     const student = application.studentProfile?.user;
@@ -197,25 +207,29 @@ export default function Show({
         });
     }, [allDocumentRequirements, uploadedDocuments]);
 
-    const handleStatusUpdate = (e: React.FormEvent) => {
+    const handleStatusUpdateSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        postStatusUpdate(route('admin.applications.updateStatus', application.id), {
+        patchStatusUpdate(route('admin.applications.status.update', application.id), {
             preserveScroll: true,
             onSuccess: () => {
                 setIsStatusModalOpen(false);
+                // Data will be refreshed by Inertia, no need to reset form manually if relying on useEffect
+            },
+            onError: () => {
+                // Errors are automatically handled by useForm and displayed
             },
         });
     };
 
     const FilePreviewDisplay: React.FC<{ upload: DocumentUploadType }> = ({ upload }) => {
         const fileType = getFileType(upload.original_filename);
-        const filePath = route('admin.documents.view', upload.id); // Use the new route
+        const filePath = route('admin.documents.view', upload.id);
 
         if (fileType === 'image') {
             return (
                 <img
                     src={filePath}
-                    alt={`Preview of ${upload.original_filename}`}
+                    alt={'Preview of ' + upload.original_filename}
                     className="my-2 h-auto max-h-60 max-w-full rounded-md border shadow-sm md:max-h-80"
                 />
             );
@@ -242,11 +256,24 @@ export default function Show({
             _method: 'PATCH',
         });
 
+        useEffect(() => {
+            // Keep form in sync if upload prop changes (e.g., after successful review)
+            setData({
+                status: upload?.status || 'pending_review',
+                rejection_reason: upload?.rejection_reason || '',
+                _method: 'PATCH',
+            });
+        }, [upload?.status, upload?.rejection_reason]);
+
         const handleSubmit = (e: React.FormEvent) => {
             e.preventDefault();
             if (!upload) return;
             post(route('admin.documents.review', upload.id), {
+                // POST is fine due to _method: 'PATCH'
                 preserveScroll: true,
+                onSuccess: () => {
+                    // reset(); // Inertia will re-render with new props, form syncs via useEffect
+                },
             });
         };
 
@@ -265,7 +292,7 @@ export default function Show({
         }
 
         const currentDocStatusConfig = getStatusConfig(upload.status);
-        const fileDisplayPath = route('admin.documents.view', upload.id); // Use new route for display/download links
+        const fileDisplayPath = route('admin.documents.view', upload.id);
 
         return (
             <form onSubmit={handleSubmit} className="bg-muted/20 dark:bg-background space-y-4 rounded-md border p-4 shadow">
@@ -387,7 +414,19 @@ export default function Show({
                                 <overallStatusConfig.icon className={cn('mr-1.5 h-4 w-4', overallStatusConfig.colorClass)} />
                                 {overallStatusConfig.label}
                             </Badge>
-                            <Dialog open={isStatusModalOpen} onOpenChange={setIsStatusModalOpen}>
+                            <Dialog
+                                open={isStatusModalOpen}
+                                onOpenChange={(open) => {
+                                    setIsStatusModalOpen(open);
+                                    if (open) {
+                                        // Reset form data when dialog is opened
+                                        setStatusFormData({
+                                            status: application.status || '',
+                                            admin_notes: application.admin_notes || '',
+                                        });
+                                    }
+                                }}
+                            >
                                 <DialogTrigger asChild>
                                     <Button variant="outline">
                                         <Edit3 className="mr-2 h-4 w-4" />
@@ -401,7 +440,7 @@ export default function Show({
                                             Change the overall status of this application and add administrative notes.
                                         </DialogDescription>
                                     </DialogHeader>
-                                    <form onSubmit={handleStatusUpdate} className="space-y-4 py-2">
+                                    <form onSubmit={handleStatusUpdateSubmit} className="space-y-4 py-2">
                                         <div>
                                             <label htmlFor="application_status" className="mb-1 block text-sm font-medium">
                                                 New Status
