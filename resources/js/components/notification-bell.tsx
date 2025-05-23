@@ -1,4 +1,4 @@
-import { Bell } from 'lucide-react';
+import { Bell, X, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
 import {
@@ -13,7 +13,7 @@ import { Badge } from './ui/badge';
 import { useNotifications } from '../hooks/use-notifications';
 
 export function NotificationBell() {
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification } = useNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearNotification, clearAllNotifications } = useNotifications();
 
   return (
     <DropdownMenu>
@@ -30,16 +30,28 @@ export function NotificationBell() {
       <DropdownMenuContent className="w-80" align="end">
         <div className="flex items-center justify-between px-2 py-1.5">
           <DropdownMenuLabel className="p-0">Notifications</DropdownMenuLabel>
-          {unreadCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto p-1 text-xs"
-              onClick={markAllAsRead}
-            >
-              Mark all read
-            </Button>
-          )}
+          <div className="flex gap-1">
+            {unreadCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1 text-xs"
+                onClick={markAllAsRead}
+              >
+                Mark all read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto p-1 text-xs text-destructive hover:text-destructive"
+                onClick={clearAllNotifications}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
         </div>
         <DropdownMenuSeparator />
         <div className="max-h-96 overflow-y-auto">
@@ -51,7 +63,7 @@ export function NotificationBell() {
             notifications.slice(0, 10).map((notification) => (
               <DropdownMenuItem
                 key={notification.id}
-                className="flex cursor-pointer flex-col items-start p-3"
+                className="flex cursor-pointer flex-col items-start p-3 group"
                 onClick={() => {
                   if (!notification.read_at) {
                     markAsRead(notification.id);
@@ -79,13 +91,13 @@ export function NotificationBell() {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-auto p-1 text-xs opacity-0 group-hover:opacity-100"
+                    className="h-auto p-1 text-xs opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
                       clearNotification(notification.id);
                     }}
                   >
-                    ×
+                    <X className="h-3 w-3" />
                   </Button>
                 </div>
               </DropdownMenuItem>

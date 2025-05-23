@@ -19,6 +19,7 @@ interface NotificationContextType {
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   clearNotification: (id: string) => void;
+  clearAllNotifications: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
@@ -36,14 +37,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useEffect(() => {
-    if (!echo) return;
+    if (!echo) {
+      console.log('Echo not available yet...');
+      return;
+    }
 
-    console.log('Setting up Echo channel for notifications...');
+    console.log('Setting up Echo channel for notifications...', echo);
     
     const channel = echo.channel('notifications');
     
-    channel.listen('.notification.created', (data: any) => {
-      console.log('Received notification:', data);
+    // Listen for test notification events
+    channel.listen('TestNotification', (data: any) => {
+      console.log('Received test notification:', data);
       
       const newNotification: Notification = {
         id: Date.now().toString(),
@@ -56,7 +61,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
       setNotifications(prev => [newNotification, ...prev]);
       
-      // Show toast notification with enhanced styling
+      // Show toast notification
       toast(data.title, {
         description: data.message,
         action: data.action_url ? {
@@ -64,12 +69,38 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           onClick: () => window.location.href = data.action_url,
         } : undefined,
         duration: 5000,
-        className: 'notification-toast',
       });
     });
 
+    // Listen for Laravel's default notification broadcast event
+    channel.listen('DatabaseNotification', (data: any) => {
+      console.log('Received DatabaseNotification:', data);
+      
+      const newNotification: Notification = {
+        id: data.id || Date.now().toString(),
+        type: data.type || 'info',
+        title: data.title || 'Notification',
+        message: data.message || '',
+        action_url: data.action_url,
+        created_at: new Date().toISOString(),
+      };
+
+      setNotifications(prev => [newNotification, ...prev]);
+      
+      // Show toast notification
+      toast(data.title || 'Notification', {
+        description: data.message || '',
+        action: data.action_url ? {
+          label: 'View',
+          onClick: () => window.location.href = data.action_url,
+        } : undefined,
+        duration: 5000,
+      });
+    });
+
+    // Also listen for Laravel's broadcast notification event (fallback)
     channel.listen('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated', (data: any) => {
-      console.log('Received Laravel notification:', data);
+      console.log('Received Laravel broadcast notification:', data);
       
       const newNotification: Notification = {
         id: data.id || Date.now().toString(),
@@ -93,8 +124,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       });
     });
 
+    // Log channel subscription success
+    channel.subscribed(() => {
+      console.log('Successfully subscribed to notifications channel');
+    });
+
+    channel.error((error: any) => {
+      console.error('Channel subscription error:', error);
+    });
+
     return () => {
-      channel.stopListening('.notification.created');
+      console.log('Cleaning up notification listeners...');
+      channel.stopListening('TestNotification');
+      channel.stopListening('DatabaseNotification');
       channel.stopListening('.Illuminate\\Notifications\\Events\\BroadcastNotificationCreated');
     };
   }, [echo]);
@@ -123,8 +165,22 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
   };
 
-  const clearNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+  const clearNotification = async (id: string) => {
+    try {
+      await router.delete(`/notifications/${id}`);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch (error) {
+      console.error('Failed to delete notification:', error);
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    try {
+      await router.delete('/notifications');
+      setNotifications([]);
+    } catch (error) {
+      console.error('Failed to clear all notifications:', error);
+    }
   };
 
   return (
@@ -135,6 +191,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         markAsRead,
         markAllAsRead,
         clearNotification,
+        clearAllNotifications,
       }}
     >
       {children}

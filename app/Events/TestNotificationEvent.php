@@ -27,7 +27,7 @@ class TestNotificationEvent implements ShouldBroadcast
 
     public function broadcastAs(): string
     {
-        return 'notification.created';
+        return 'TestNotification';
     }
 
     public function broadcastWith(): array

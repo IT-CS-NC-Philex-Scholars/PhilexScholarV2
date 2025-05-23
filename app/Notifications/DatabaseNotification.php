@@ -53,6 +53,6 @@ class DatabaseNotification extends Notification implements ShouldBroadcast, Shou
 
     public function broadcastAs(): string
     {
-        return 'notification.created';
+        return 'DatabaseNotification';
     }
 }

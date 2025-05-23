@@ -30,6 +30,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
         Route::post('/{id}/read', [NotificationController::class, 'markAsRead'])->name('markAsRead');
         Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');
+        Route::delete('/{id}', [NotificationController::class, 'delete'])->name('delete');
+        Route::delete('/', [NotificationController::class, 'deleteAll'])->name('deleteAll');
     });
 
     // Test routes
