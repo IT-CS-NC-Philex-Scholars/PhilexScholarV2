@@ -1,575 +1,355 @@
 import { Head, Link } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, DocumentRequirement, ScholarshipApplication, ScholarshipProgram } from '@/types';
+import {
+  BreadcrumbItem,
+  ScholarshipProgram as ScholarshipProgramType,
+  DocumentRequirement as DocumentRequirementType,
+  ScholarshipApplication as ScholarshipApplicationType,
+  StudentProfile as StudentProfileType,
+  User as UserType
+} from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button'; 
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar } from '@/components/ui/avatar';
-import { CalendarIcon, ClipboardList, FileText, GraduationCap, Users, Award, Banknote, Clock, Bookmark, Calendar } from 'lucide-react';
-import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  CalendarDays,
+  DollarSign,
+  Users,
+  ClipboardList,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  AlertCircle,
+  Eye,
+  GraduationCap,
+  BarChart2,
+  BookOpen,
+  UserCheck,
+  Info
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface ScholarshipShowProps {
-  scholarship: ScholarshipProgram & {
-    documentRequirements: DocumentRequirement[];
-    scholarshipApplications: (ScholarshipApplication & {
-      studentProfile: {
-        user: {
-          id: number;
-          name: string;
-          email: string;
-        };
+  scholarship: ScholarshipProgramType & {
+    documentRequirements?: DocumentRequirementType[];
+    scholarshipApplications?: (ScholarshipApplicationType & {
+      studentProfile?: StudentProfileType & {
+        user?: UserType;
       };
     })[];
+    scholarship_applications_count?: number;
   };
 }
 
-export default function Show({ scholarship }: ScholarshipShowProps) {
-  const [activeFilter, setActiveFilter] = useState<string>('all');
+const formatCurrency = (amount: number | string | undefined) => {
+  console.log('[formatCurrency] Received amount:', amount, '| typeof amount:', typeof amount);
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  console.log('[formatCurrency] Parsed num:', num, '| typeof num:', typeof num);
+  
+  const isNumANumber = typeof num === 'number';
+  const isNumNaN = isNaN(num as number); // Cast to number for isNaN, as isNaN(null) is false
+  console.log('[formatCurrency] isNumANumber:', isNumANumber, '| isNumNaN:', isNumNaN);
 
-  // Safety check if scholarship data is incomplete
-  if (!scholarship) {
-    return (
-      <AppLayout>
-        <div className="p-4">
-          <div className="rounded-lg border p-8 text-center">
-            <h2 className="text-xl font-semibold mb-2">Scholarship not found</h2>
-            <p className="text-muted-foreground mb-4">The scholarship information could not be loaded.</p>
-            <Button asChild>
-              <Link href={route('admin.scholarships.index')}>Return to Scholarships</Link>
-            </Button>
-          </div>
-        </div>
-      </AppLayout>
-    );
+  if (!isNumANumber || isNumNaN) {
+    console.log('[formatCurrency] Returning N/A due to type or NaN');
+    return 'N/A';
   }
   
+  console.log('[formatCurrency] Attempting toLocaleString on num:', num);
+  try {
+    const result = (num as number).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+    console.log('[formatCurrency] toLocaleString result:', result);
+    return result;
+  } catch (e) {
+    console.error('[formatCurrency] Error in toLocaleString:', e, 'for num:', num);
+    return 'Error'; // Or 'N/A' or some other fallback
+  }
+};
+
+const formatDate = (dateString: string | null | undefined) => {
+  if (!dateString) return 'N/A';
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
+};
+
+const formatSchoolType = (type: string | undefined) => {
+  if (!type) return 'N/A';
+  return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
+const formatGpa = (gpa: string | number | null | undefined): string => {
+  if (gpa === null || gpa === undefined) return 'N/A';
+  const numGpa = typeof gpa === 'string' ? parseFloat(gpa) : gpa;
+  if (isNaN(numGpa)) return 'N/A';
+  return numGpa.toFixed(2);
+};
+
+const getApplicationStatusConfig = (status: string | undefined): { variant: 'default' | 'destructive' | 'outline' | 'secondary', icon: React.ElementType, colorClass: string } => {
+  if (!status) return { variant: 'secondary', icon: AlertCircle, colorClass: 'text-gray-600 dark:text-gray-400' };
+  
+  status = status.toLowerCase();
+  if (['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'enrolled'].includes(status)) {
+    return { variant: 'default', icon: CheckCircle2, colorClass: 'text-green-600 dark:text-green-500' };
+  }
+  if (['documents_rejected', 'rejected'].includes(status)) {
+    return { variant: 'destructive', icon: XCircle, colorClass: 'text-red-600 dark:text-red-500' };
+  }
+  if (['disbursement_pending', 'service_pending', 'documents_under_review', 'submitted'].includes(status)) {
+    return { variant: 'outline', icon: Clock, colorClass: 'text-amber-600 dark:text-amber-500' };
+  }
+  return { variant: 'secondary', icon: Info, colorClass: 'text-gray-600 dark:text-gray-400' };
+};
+
+const formatStatus = (status: string | undefined) => {
+  if (!status) return 'N/A';
+  return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
+};
+
+export default function Show({ scholarship }: ScholarshipShowProps) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Admin Dashboard', href: route('admin.dashboard') },
     { title: 'Scholarships', href: route('admin.scholarships.index') },
     { title: scholarship.name }
   ];
 
-  // Get applications by status for stats
-  const applications = scholarship.scholarshipApplications || [];
-  const documentRequirements = scholarship.documentRequirements || [];
-  
-  const pendingApplications = applications.filter(app => 
-    ['submitted', 'documents_pending', 'documents_under_review'].includes(app.status)
-  );
-  
-  const approvedApplications = applications.filter(app => 
-    ['documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 
-     'disbursement_pending', 'disbursement_processed', 'completed'].includes(app.status)
-  );
-  
-  const rejectedApplications = applications.filter(app => 
-    ['documents_rejected', 'rejected'].includes(app.status)
-  );
+  const applicationsCount = scholarship.scholarshipApplications?.length ?? 0;
+  const totalApplications = scholarship.scholarship_applications_count ?? applicationsCount;
 
-  // Format status display
-  const formatStatus = (status: string) => {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-  };
 
-  // Status badge variant mapping
-  const getStatusBadgeVariant = (status: string) => {
-    if (['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'enrolled'].includes(status)) {
-      return 'default';
-    }
-    if (['documents_rejected', 'rejected'].includes(status)) {
-      return 'destructive';
-    }
-    if (['disbursement_pending', 'service_pending', 'documents_under_review', 'submitted'].includes(status)) {
-      return 'outline';
-    }
-    return 'secondary';
-  };
+  const stats = [
+    { name: 'Total Budget', value: formatCurrency(scholarship.total_budget), icon: DollarSign },
+    { name: 'Per Student Budget', value: formatCurrency(scholarship.per_student_budget), icon: DollarSign },
+    { name: 'Available Slots', value: scholarship.available_slots, icon: Users },
+    { name: 'Applications', value: totalApplications, icon: ClipboardList },
+    { name: 'Deadline', value: formatDate(scholarship.application_deadline), icon: CalendarDays },
+    { name: 'Status', value: scholarship.active ? 'Active' : 'Inactive', icon: scholarship.active ? CheckCircle2 : XCircle, color: scholarship.active ? 'text-green-500' : 'text-red-500' },
+  ];
 
-  // Filter applications based on activeFilter
-  const filteredApplications = activeFilter === 'all' 
-    ? applications 
-    : applications.filter(app => {
-        if (activeFilter === 'pending') {
-          return ['submitted', 'documents_pending', 'documents_under_review'].includes(app.status);
-        } else if (activeFilter === 'approved') {
-          return ['documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 
-                 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(app.status);
-        } else if (activeFilter === 'rejected') {
-          return ['documents_rejected', 'rejected'].includes(app.status);
-        }
-        return true;
-      });
-
-  // Calculate fill percentage
-  const fillPercentage = scholarship.available_slots > 0 
-    ? Math.min(100, (approvedApplications.length / scholarship.available_slots) * 100) 
-    : 0;
-    
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
       <Head title={`Scholarship: ${scholarship.name}`} />
-      
-      <div className="container mx-auto px-4 py-6 max-w-7xl">
-        {/* Scholarship Header */}
+
+      <div className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
+        {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
-              <div className="flex items-center gap-2">
-                <Badge variant={scholarship.active ? 'default' : 'secondary'} className="mb-2">
-                  {scholarship.active ? 'Active' : 'Inactive'}
-                </Badge>
-                <Badge variant="outline" className="mb-2">
-                  {scholarship.school_type_eligibility === 'both' ? 'All Students' : 
-                    scholarship.school_type_eligibility === 'high_school' ? 'High School' : 'College'}
-                </Badge>
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-1">{scholarship.name}</h1>
-              <p className="text-muted-foreground">
-                {scholarship.semester} · {scholarship.academic_year}
+              <Link
+                href={route('admin.scholarships.index')}
+                className="inline-flex items-center text-sm font-medium text-primary hover:text-primary/80 mb-2"
+              >
+                <ArrowLeft className="h-4 w-4 mr-1.5" />
+                Back to Scholarships
+              </Link>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+                {scholarship.name}
+              </h1>
+              <p className="mt-2 text-base text-muted-foreground">
+                {scholarship.description}
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
+            <div className="flex space-x-2 mt-2 sm:mt-0 flex-shrink-0">
+              <Button asChild variant="outline">
                 <Link href={route('admin.scholarships.edit', scholarship.id)}>
-                  <FileText className="mr-2 h-4 w-4" /> Edit Scholarship
+                  <Edit className="h-4 w-4 mr-2" /> Edit
                 </Link>
               </Button>
-              <Button asChild variant="default" className="w-full sm:w-auto">
-                <Link href={route('admin.scholarships.index')}>
-                  <ClipboardList className="mr-2 h-4 w-4" /> All Scholarships
-                </Link>
-              </Button>
+              <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive">
+                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action cannot be undone. This will permanently delete the scholarship program.
+                      You cannot delete a scholarship with existing applications.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction asChild>
+                      <Link
+                        href={route('admin.scholarships.destroy', scholarship.id)}
+                        method="delete"
+                        as="button"
+                        className={cn(buttonVariants({ variant: 'destructive' }))}
+                        preserveScroll 
+                        onError={(errors) => { 
+                          if (Object.keys(errors).length > 0) {
+                             // Keep dialog open on error by not changing showDeleteConfirm
+                          }
+                        }}
+                        onSuccess={() => {
+                            setShowDeleteConfirm(false); // Close dialog on success
+                        }}
+                      >
+                        Delete
+                      </Link>
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-          </div>
-
-          {/* Quick Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="overflow-hidden border-l-4 border-l-primary">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Award Amount</p>
-                    <p className="text-2xl font-bold">${scholarship.per_student_budget.toLocaleString()}</p>
-                  </div>
-                  <div className="rounded-full bg-primary/10 p-2">
-                    <Banknote className="h-5 w-5 text-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border-l-4 border-l-violet-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Applications</p>
-                    <p className="text-2xl font-bold">{applications.length}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {scholarship.available_slots > 0 && 
-                        `${approvedApplications.length}/${scholarship.available_slots} slots filled`}
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-violet-500/10 p-2">
-                    <Users className="h-5 w-5 text-violet-500" />
-                  </div>
-                </div>
-                {scholarship.available_slots > 0 && (
-                  <div className="mt-4">
-                    <Progress value={fillPercentage} className="h-2" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border-l-4 border-l-amber-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Min. Requirements</p>
-                    <p className="text-2xl font-bold">{scholarship.min_gpa}% GPA</p>
-                    <p className="text-xs text-muted-foreground">
-                      {scholarship.community_service_days} service days required
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-amber-500/10 p-2">
-                    <GraduationCap className="h-5 w-5 text-amber-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="overflow-hidden border-l-4 border-l-red-500">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-1">Deadline</p>
-                    <p className="text-2xl font-bold">{new Date(scholarship.application_deadline).toLocaleDateString()}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {Math.ceil((new Date(scholarship.application_deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))} days remaining
-                    </p>
-                  </div>
-                  <div className="rounded-full bg-red-500/10 p-2">
-                    <Calendar className="h-5 w-5 text-red-500" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
 
-        {/* Tabs Section */}
-        <Tabs defaultValue="overview" className="space-y-8">
-          <div className="relative overflow-auto">
-            <ScrollArea className="w-full whitespace-nowrap rounded-md border">
-              <div className="flex p-1 w-max min-w-full">
-                <TabsList className="inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground overflow-x-auto ">
-                  <TabsTrigger value="overview" className="flex items-center gap-1">
-                    <Bookmark className="h-4 w-4" /> Overview
-                  </TabsTrigger>
-                  <TabsTrigger value="requirements" className="flex items-center gap-1">
-                    <ClipboardList className="h-4 w-4" /> Requirements
-                  </TabsTrigger>
-                  <TabsTrigger value="applications" className="flex items-center gap-1">
-                    <Users className="h-4 w-4" /> Applications
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-            </ScrollArea>
-          </div>
-          
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main details card */}
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-primary" />
-                    <CardTitle>Scholarship Overview</CardTitle>
-                  </div>
-                  <CardDescription>Comprehensive details about this scholarship program</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div>
-                    <h3 className="font-semibold mb-2">Description</h3>
-                    <p className="text-sm text-muted-foreground">{scholarship.description}</p>
-                  </div>
-                  
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-4">Key Information</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-4">
-                      <div className="flex items-start gap-2">
-                        <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                          <Calendar className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Academic Year</p>
-                          <p className="text-sm text-muted-foreground">{scholarship.academic_year}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                          <Bookmark className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Semester</p>
-                          <p className="text-sm text-muted-foreground">{scholarship.semester}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                          <Clock className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Application Deadline</p>
-                          <p className="text-sm text-muted-foreground">{new Date(scholarship.application_deadline).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                          <GraduationCap className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">School Type</p>
-                          <p className="text-sm text-muted-foreground">
-                            {scholarship.school_type_eligibility === 'both' ? 'All Students' : 
-                            scholarship.school_type_eligibility === 'high_school' ? 'High School' : 'College'}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-start gap-2">
-                        <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                          <Award className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Minimum GPA</p>
-                          <p className="text-sm text-muted-foreground">{scholarship.min_gpa}%</p>
-                        </div>
-                      </div>
-                      
-                      {scholarship.min_units && (
-                        <div className="flex items-start gap-2">
-                          <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                            <Bookmark className="h-4 w-4 text-primary" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium">Minimum Units</p>
-                            <p className="text-sm text-muted-foreground">{scholarship.min_units}</p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-start gap-2">
-                        <div className="rounded-full bg-primary/10 p-1.5 mt-0.5">
-                          <ClipboardList className="h-4 w-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">Service Requirement</p>
-                          <p className="text-sm text-muted-foreground">{scholarship.community_service_days} days</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-              
-              {/* Budget card */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Banknote className="h-5 w-5 text-primary" />
-                    <CardTitle>Budget & Allocation</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-5">
-                  <div className="pb-5 border-b">
-                    <p className="text-sm text-muted-foreground mb-1">Award per Student</p>
-                    <div className="flex justify-between items-center">
-                      <p className="text-2xl font-bold">${scholarship.per_student_budget.toLocaleString()}</p>
-                      <Badge variant="outline">Per Recipient</Badge>
-                    </div>
-                  </div>
-                  
-                  <div className="pb-5 border-b">
-                    <p className="text-sm text-muted-foreground mb-1">Total Budget</p>
-                    <p className="text-xl font-semibold">${scholarship.total_budget.toLocaleString()}</p>
-                  </div>
-                  
-                  <div>
-                    <div className="flex justify-between mb-2">
-                      <p className="text-sm font-medium">Enrollment Progress</p>
-                      <p className="text-sm font-medium">
-                        {approvedApplications.length}/{scholarship.available_slots} slots
-                      </p>
-                    </div>
-                    <Progress value={fillPercentage} className="h-2" />
-                    <div className="grid grid-cols-3 mt-4 text-center">
-                      <div>
-                        <p className="text-sm font-semibold">{applications.length}</p>
-                        <p className="text-xs text-muted-foreground">Total</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{approvedApplications.length}</p>
-                        <p className="text-xs text-muted-foreground">Approved</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{pendingApplications.length}</p>
-                        <p className="text-xs text-muted-foreground">Pending</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          {/* Document Requirements Tab */}
-          <TabsContent value="requirements">
-            <Card>
-              <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <ClipboardList className="h-5 w-5 text-primary" />
-                    <CardTitle>Document Requirements</CardTitle>
-                  </div>
-                  <CardDescription>
-                    Documents that students must submit with their application
-                  </CardDescription>
-                </div>
-                <Button asChild>
-                  <Link href={route('admin.scholarships.edit', scholarship.id)}>Manage Requirements</Link>
-                </Button>
+        {/* Scholarship Details & Stats */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 mb-8">
+          {stats.map((stat) => (
+            <Card key={stat.name} className="flex flex-col">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{stat.name}</CardTitle>
+                <stat.icon className={cn("h-5 w-5 text-muted-foreground", stat.color)} />
               </CardHeader>
               <CardContent>
-                {documentRequirements.length === 0 ? (
-                  <div className="text-center border rounded-lg p-8 bg-muted/5">
-                    <ClipboardList className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="text-lg font-semibold mb-1">No Requirements Defined</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto mb-4">
-                      This scholarship doesn't have any document requirements yet. Students won't need to upload any documents when applying.                    
-                    </p>
-                    <Button asChild variant="outline">
-                      <Link href={route('admin.scholarships.edit', scholarship.id)}>Add Requirements</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {documentRequirements.map(requirement => (
-                      <Card key={requirement.id} className="overflow-hidden border-t-4 border-t-blue-500">
-                        <CardContent className="p-4 pt-5">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold">{requirement.name}</h3>
-                            <Badge variant={requirement.is_required ? 'default' : 'secondary'}>
-                              {requirement.is_required ? 'Required' : 'Optional'}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{requirement.description}</p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                <div className={cn("text-2xl font-bold", stat.color)}>{stat.value}</div>
               </CardContent>
             </Card>
-          </TabsContent>
-          
-          {/* Applications Tab */}
-          <TabsContent value="applications">
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-primary" />
-                      <CardTitle>Student Applications</CardTitle>
-                    </div>
-                    <CardDescription>
-                      Students who have applied to this scholarship program
-                    </CardDescription>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Button 
-                      variant={activeFilter === 'all' ? 'default' : 'outline'} 
-                      size="sm" 
-                      onClick={() => setActiveFilter('all')}
-                      className="text-xs h-8"
-                    >
-                      All ({applications.length})
-                    </Button>
-                    <Button 
-                      variant={activeFilter === 'pending' ? 'default' : 'outline'} 
-                      size="sm" 
-                      onClick={() => setActiveFilter('pending')}
-                      className="text-xs h-8"
-                    >
-                      Pending ({pendingApplications.length})
-                    </Button>
-                    <Button 
-                      variant={activeFilter === 'approved' ? 'default' : 'outline'} 
-                      size="sm" 
-                      onClick={() => setActiveFilter('approved')}
-                      className="text-xs h-8"
-                    >
-                      Approved ({approvedApplications.length})
-                    </Button>
-                    <Button 
-                      variant={activeFilter === 'rejected' ? 'default' : 'outline'} 
-                      size="sm" 
-                      onClick={() => setActiveFilter('rejected')}
-                      className="text-xs h-8"
-                    >
-                      Rejected ({rejectedApplications.length})
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {applications.length === 0 ? (
-                  <div className="text-center border rounded-lg p-8 bg-muted/5">
-                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-                    <h3 className="text-lg font-semibold mb-1">No Applications Yet</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      No students have applied for this scholarship yet. Applications will appear here once students submit them.
-                    </p>
-                  </div>
-                ) : filteredApplications.length === 0 ? (
-                  <div className="text-center border rounded-lg p-6 bg-muted/5">
-                    <h3 className="font-semibold mb-1">No Matching Applications</h3>
-                    <p className="text-muted-foreground">No applications match your current filter. Try another filter or view all applications.</p>
-                  </div>
-                ) : (
-                  <div className="overflow-hidden">
-                    <div className="overflow-x-auto rounded-lg border">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="bg-muted/50 border-b">
-                            <th className="text-left py-3 px-4 font-medium">Student</th>
-                            <th className="text-left py-3 px-4 font-medium">Status</th>
-                            <th className="text-left py-3 px-4 font-medium">Submitted</th>
-                            <th className="text-left py-3 px-4 font-medium">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y">
-                          {filteredApplications.map(application => (
-                            <tr key={application.id} className="hover:bg-muted/50 transition-colors">
-                              <td className="py-3 px-4">
-                                <div className="flex items-center gap-3">
-                                  <Avatar className="h-8 w-8 border bg-muted">
-                                    <div className="flex h-full w-full items-center justify-center rounded-full bg-muted font-semibold uppercase text-muted-foreground">
-                                      {application.studentProfile?.user?.name?.charAt(0) || '?'}
+          ))}
+        </div>
+        
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            {/* Left Column: Eligibility & Requirements */}
+            <div className="lg:col-span-4 space-y-6">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center">
+                            <UserCheck className="h-5 w-5 mr-2 text-primary" />
+                            Eligibility Criteria
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                        <div className="flex justify-between"><span>School Type:</span> <Badge variant="outline">{formatSchoolType(scholarship.school_type_eligibility)}</Badge></div>
+                        <div className="flex justify-between"><span>Min. GPA:</span> <Badge variant="outline">{formatGpa(scholarship.min_gpa)}</Badge></div>
+                        {scholarship.min_units && <div className="flex justify-between"><span>Min. Units:</span> <Badge variant="outline">{scholarship.min_units}</Badge></div>}
+                        <div className="flex justify-between"><span>Semester:</span> <Badge variant="outline">{scholarship.semester}</Badge></div>
+                        <div className="flex justify-between"><span>Academic Year:</span> <Badge variant="outline">{scholarship.academic_year}</Badge></div>
+                        <div className="flex justify-between"><span>Community Service:</span> <Badge variant="outline">{scholarship.community_service_days} days</Badge></div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center">
+                            <BookOpen className="h-5 w-5 mr-2 text-primary" />
+                            Document Requirements
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {scholarship.documentRequirements && scholarship.documentRequirements.length > 0 ? (
+                            <ul className="space-y-3">
+                            {scholarship.documentRequirements.map((req) => (
+                                <li key={req.id} className="text-sm p-3 border rounded-md bg-muted/20">
+                                    <div className="flex justify-between items-start">
+                                        <span className="font-medium">{req.name}</span>
+                                        {req.is_required && <Badge variant="destructive" className="text-xs">Required</Badge>}
                                     </div>
-                                  </Avatar>
-                                  <div>
-                                    {application.studentProfile?.user ? (
-                                      <>
-                                        <div className="font-medium">{application.studentProfile.user.name}</div>
-                                        <div className="text-xs text-muted-foreground">{application.studentProfile.user.email}</div>
-                                      </>
-                                    ) : (
-                                      <div className="font-medium text-muted-foreground">Student info unavailable</div>
-                                    )}
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4">
-                                <Badge variant={getStatusBadgeVariant(application.status)}>
-                                  {formatStatus(application.status)}
-                                </Badge>
-                              </td>
-                              <td className="py-3 px-4">
-                                {application.submitted_at ? (
-                                  <div className="flex items-center gap-2">
-                                    <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span>{new Date(application.submitted_at).toLocaleDateString()}</span>
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground">Not submitted</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <Button asChild size="sm" className="w-full sm:w-auto">
-                                  <Link href={route('admin.applications.show', application.id)}>Review</Link>
-                                </Button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                                    <p className="text-xs text-muted-foreground mt-1">{req.description}</p>
+                                </li>
+                            ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">No specific document requirements listed.</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Right Column: Applications */}
+            <div className="lg:col-span-8">
+                <Card>
+                    <CardHeader>
+                    <CardTitle className="flex items-center">
+                        <BarChart2 className="h-5 w-5 mr-2 text-primary" />
+                        Scholarship Applications ({totalApplications})
+                    </CardTitle>
+                    <CardDescription>
+                        List of students who have applied for this scholarship.
+                    </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                    {scholarship.scholarshipApplications && scholarship.scholarshipApplications.length > 0 ? (
+                        <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader>
+                            <TableRow>
+                                <TableHead>Applicant</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Submitted At</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                            {scholarship.scholarshipApplications.map((app) => {
+                                const statusConfig = getApplicationStatusConfig(app.status);
+                                return (
+                                <TableRow key={app.id}>
+                                    <TableCell className="font-medium whitespace-nowrap">
+                                    {app.studentProfile?.user?.name || 'N/A'}
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                                    {app.studentProfile?.user?.email || 'N/A'}
+                                    </TableCell>
+                                    <TableCell>
+                                    <Badge variant={statusConfig.variant} className="capitalize whitespace-nowrap">
+                                        <statusConfig.icon className={cn("h-3.5 w-3.5 mr-1.5", statusConfig.colorClass)} />
+                                        {formatStatus(app.status)}
+                                    </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground whitespace-nowrap">{formatDate(app.submitted_at)}</TableCell>
+                                    <TableCell className="text-right">
+                                    <Button asChild variant="ghost" size="sm">
+                                        <Link href={route('admin.applications.show', app.id)}>
+                                        <Eye className="h-4 w-4 mr-1" /> View
+                                        </Link>
+                                    </Button>
+                                    </TableCell>
+                                </TableRow>
+                                );
+                            })}
+                            </TableBody>
+                        </Table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-10 border rounded-md bg-muted/20">
+                        <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="font-semibold text-lg">No Applications Yet</p>
+                        <p className="text-sm text-muted-foreground">
+                            There are currently no applications for this scholarship program.
+                        </p>
+                        </div>
+                    )}
+                    </CardContent>
+                </Card>
+            </div>
+        </div>
       </div>
     </AppLayout>
   );

@@ -20,6 +20,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::get('/applications', [ApplicationController::class, 'index'])->name('applications.index');
     Route::get('/applications/{application}', [ApplicationController::class, 'show'])->name('applications.show');
     Route::patch('/applications/{application}/status', [ApplicationController::class, 'updateStatus'])->name('applications.status.update');
+    Route::get('/documents/{documentUpload}/view', [ApplicationController::class, 'viewDocument'])->name('documents.view'); // New route for viewing
     Route::patch('/documents/{document}/review', [ApplicationController::class, 'reviewDocument'])->name('documents.review');
     Route::patch('/service-reports/{report}/review', [ApplicationController::class, 'reviewServiceReport'])->name('service-reports.review');
     Route::post('/applications/{application}/disbursements', [ApplicationController::class, 'createDisbursement'])->name('disbursements.store');

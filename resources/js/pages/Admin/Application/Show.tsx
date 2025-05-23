@@ -1,780 +1,633 @@
-import { Head, useForm } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, ScholarshipApplication, DocumentUpload, CommunityServiceReport } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+    Dialog,
+    DialogClose,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertCircle, CheckCircle, Download, Eye, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import AppLayout from '@/layouts/app-layout';
+import { cn } from '@/lib/utils';
+import {
+    ScholarshipApplication as ApplicationType,
+    BreadcrumbItem,
+    CommunityServiceReport as CommunityServiceReportType,
+    Disbursement as DisbursementType,
+    DocumentRequirement as DocumentRequirementType,
+    DocumentUpload as DocumentUploadType,
+    ScholarshipProgram as ScholarshipProgramType,
+    StudentProfile as StudentProfileType,
+    User as UserType,
+} from '@/types';
+import { Head, Link, useForm } from '@inertiajs/react';
+import {
+    AlertCircle,
+    ArrowLeft,
+    Award,
+    BookOpenText,
+    CheckCircle2,
+    Clock,
+    DollarSign,
+    Download,
+    Edit3,
+    ExternalLink,
+    FileClock,
+    FileImage,
+    FileText as FileTextIconLucide,
+    FileType2,
+    Info,
+    ListChecks,
+    MessageSquare,
+    XCircle,
+} from 'lucide-react';
+import React, { useMemo, useState } from 'react';
 
 interface ApplicationShowProps {
-  application: ScholarshipApplication;
+    application: ApplicationType & {
+        studentProfile?: StudentProfileType & { user?: UserType };
+        scholarshipProgram?: ScholarshipProgramType & {
+            documentRequirements?: DocumentRequirementType[];
+        };
+        documentUploads?: DocumentUploadType[];
+        communityServiceReports?: CommunityServiceReportType[];
+        disbursements?: DisbursementType[];
+    };
+    applicationStatuses?: Array<{ value: string; label: string }>;
+    documentStatuses?: Array<{ value: string; label: string }>;
 }
 
-export default function Show({ application }: ApplicationShowProps) {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [openReviewDialog, setOpenReviewDialog] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<DocumentUpload | null>(null);
-  const [selectedReport, setSelectedReport] = useState<CommunityServiceReport | null>(null);
-  const [dialogType, setDialogType] = useState<'document' | 'report' | 'status' | 'create_disbursement' | 'edit_disbursement'>('document');
-  
-  // Disbursement form
-  const disbursementForm = useForm({
-    id: 0,
-    amount: 0,
-    payment_method: '',
-    reference_number: '',
-    disbursement_date: '',
-    notes: '',
-    status: 'pending',
-  });
-
-  const statusForm = useForm({
-    status: application.status,
-    admin_notes: application.admin_notes || '',
-  });
-
-  const documentForm = useForm({
-    status: '',
-    rejection_reason: '',
-  });
-
-  const reportForm = useForm({
-    status: '',
-    rejection_reason: '',
-  });
-
-  const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Admin Dashboard', href: route('admin.dashboard') },
-    { title: 'Applications', href: route('admin.applications.index') },
-    { title: `Application #${application.id}` }
-  ];
-  
-  // Format status for display
-  const formatStatus = (status: string) => {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-  };
-  
-  // Status badge variant mapping
-  const getStatusBadgeVariant = (status: string) => {
-    if (['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'enrolled'].includes(status)) {
-      return 'success';
+const formatDate = (dateString?: string | null, includeTime = false) => {
+    if (!dateString) return 'N/A';
+    const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+    };
+    if (includeTime) {
+        options.hour = '2-digit';
+        options.minute = '2-digit';
     }
-    if (['documents_rejected', 'rejected'].includes(status)) {
-      return 'destructive';
+    return new Date(dateString).toLocaleDateString(undefined, options);
+};
+
+const formatCurrency = (amount?: number | string | null) => {
+    const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+    if (typeof num !== 'number' || isNaN(num)) return 'N/A';
+    return num.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+};
+
+const getStatusConfig = (
+    status?: string,
+): { variant: 'default' | 'destructive' | 'outline' | 'secondary'; icon: React.ElementType; colorClass: string; label: string } => {
+    const s = status?.toLowerCase() || 'unknown';
+    let label = s.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+
+    if (
+        ['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'enrolled', 'approved'].includes(s)
+    ) {
+        return { variant: 'default', icon: CheckCircle2, colorClass: 'text-green-600 dark:text-green-500', label };
     }
-    if (['disbursement_pending', 'service_pending', 'documents_under_review', 'submitted'].includes(status)) {
-      return 'warning';
+    if (
+        [
+            'documents_rejected',
+            'rejected',
+            'rejected_invalid',
+            'rejected_incomplete',
+            'rejected_incorrect_format',
+            'rejected_unreadable',
+            'rejected_other',
+            'rejected_insufficient_hours',
+            'rejected_incomplete_documentation',
+        ].includes(s)
+    ) {
+        return { variant: 'destructive', icon: XCircle, colorClass: 'text-red-600 dark:text-red-500', label };
     }
-    return 'secondary';
-  };
+    if (['disbursement_pending', 'service_pending', 'documents_under_review', 'submitted', 'pending_review'].includes(s)) {
+        return { variant: 'outline', icon: Clock, colorClass: 'text-amber-600 dark:text-amber-500', label };
+    }
+    return {
+        variant: 'secondary',
+        icon: Info,
+        colorClass: 'text-gray-600 dark:text-gray-400',
+        label: label === 'Unknown' ? 'Unknown Status' : label,
+    };
+};
 
-  const openDocumentReviewDialog = (document: DocumentUpload) => {
-    setSelectedDocument(document);
-    documentForm.setData('status', '');
-    documentForm.setData('rejection_reason', '');
-    setDialogType('document');
-    setOpenReviewDialog(true);
-  };
+const documentStatusOptionsProvided = [
+    { value: 'pending_review', label: 'Pending Review' },
+    { value: 'approved', label: 'Approved' },
+    { value: 'rejected_invalid', label: 'Rejected: Invalid' },
+    { value: 'rejected_incomplete', label: 'Rejected: Incomplete' },
+    { value: 'rejected_unreadable', label: 'Rejected: Unreadable' },
+    { value: 'rejected_other', label: 'Rejected: Other' },
+];
 
-  const openReportReviewDialog = (report: CommunityServiceReport) => {
-    setSelectedReport(report);
-    reportForm.setData('status', '');
-    reportForm.setData('rejection_reason', '');
-    setDialogType('report');
-    setOpenReviewDialog(true);
-  };
+const applicationStatusOptionsProvided = [
+    { value: 'submitted', label: 'Submitted' },
+    { value: 'documents_pending', label: 'Documents Pending' },
+    { value: 'documents_under_review', label: 'Documents Under Review' },
+    { value: 'documents_approved', label: 'Documents Approved' },
+    { value: 'service_pending', label: 'Service Pending' },
+    { value: 'service_completed', label: 'Service Completed' },
+    { value: 'disbursement_pending', label: 'Disbursement Pending' },
+    { value: 'disbursement_processed', label: 'Disbursement Processed' },
+    { value: 'enrolled', label: 'Enrolled' },
+    { value: 'completed', label: 'Completed' },
+    { value: 'rejected', label: 'Rejected' },
+    { value: 'archived', label: 'Archived' },
+];
 
-  const openStatusUpdateDialog = () => {
-    statusForm.setData('status', application.status);
-    statusForm.setData('admin_notes', application.admin_notes || '');
-    setDialogType('status');
-    setOpenReviewDialog(true);
-  };
+const getFileType = (filename?: string): 'image' | 'pdf' | 'other' => {
+    if (!filename) return 'other';
+    const ext = filename.split('.').pop()?.toLowerCase();
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif'].includes(ext || '')) return 'image';
+    if (ext === 'pdf') return 'pdf';
+    return 'other';
+};
 
-  const submitDocumentReview = () => {
-    if (!selectedDocument) return;
-    
-    documentForm.post(route('admin.documents.review', selectedDocument.id), {
-      onSuccess: () => {
-        setOpenReviewDialog(false);
-      },
+export default function Show({
+    application,
+    applicationStatuses = applicationStatusOptionsProvided,
+    documentStatuses = documentStatusOptionsProvided,
+}: ApplicationShowProps) {
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+
+    const {
+        data: statusForm,
+        setData: setStatusFormData,
+        post: postStatusUpdate,
+        processing: statusProcessing,
+        errors: statusErrors,
+        reset: resetStatusForm,
+    } = useForm({
+        status: application.status || '',
+        admin_notes: application.admin_notes || '',
     });
-  };
 
-  const submitReportReview = () => {
-    if (!selectedReport) return;
-    
-    reportForm.post(route('admin.service-reports.review', selectedReport.id), {
-      onSuccess: () => {
-        setOpenReviewDialog(false);
-      },
-    });
-  };
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Admin Dashboard', href: route('admin.dashboard') },
+        { title: 'Applications', href: route('admin.applications.index') },
+        { title: `Application #${application.id}` },
+    ];
 
-  const updateApplicationStatus = () => {
-    statusForm.post(route('admin.applications.status.update', application.id), {
-      onSuccess: () => {
-        setOpenReviewDialog(false);
-      },
-    });
-  };
+    const student = application.studentProfile?.user;
+    const studentProfile = application.studentProfile;
+    const program = application.scholarshipProgram;
 
-  return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title={`Application #${application.id}`} />
-      
-      <div className="p-4">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold">Application #{application.id}</h1>
-            <p className="text-muted-foreground">
-              Submitted {application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : 'Not submitted'}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button onClick={openStatusUpdateDialog}>
-              Update Status
-            </Button>
-          </div>
-        </div>
-        
-        {/* Status Card */}
-        <Card className="mb-6">
-          <CardHeader className="pb-3">
-            <div className="flex justify-between items-center">
-              <CardTitle>Current Status</CardTitle>
-              <Badge variant={getStatusBadgeVariant(application.status) as any} className="text-sm">
-                {formatStatus(application.status)}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-medium mb-1">Admin Notes</h3>
-                <p className="text-muted-foreground">
-                  {application.admin_notes || 'No notes added'}
-                </p>
-              </div>
-              {application.reviewed_at && (
-                <div>
-                  <h3 className="font-medium mb-1">Last Reviewed</h3>
-                  <p className="text-muted-foreground">
-                    {new Date(application.reviewed_at).toLocaleString()}
-                  </p>
+    const allDocumentRequirements = program?.documentRequirements || [];
+    const uploadedDocuments = application.documentUploads || [];
+
+    const documentsWithStatus = useMemo(() => {
+        return allDocumentRequirements.map((req) => {
+            const upload = uploadedDocuments.find((up) => up.document_requirement_id === req.id);
+            return {
+                requirement: req,
+                upload: upload,
+                status: upload?.status || 'missing',
+            };
+        });
+    }, [allDocumentRequirements, uploadedDocuments]);
+
+    const handleStatusUpdate = (e: React.FormEvent) => {
+        e.preventDefault();
+        postStatusUpdate(route('admin.applications.updateStatus', application.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsStatusModalOpen(false);
+            },
+        });
+    };
+
+    const FilePreviewDisplay: React.FC<{ upload: DocumentUploadType }> = ({ upload }) => {
+        const fileType = getFileType(upload.original_filename);
+        const filePath = route('admin.documents.view', upload.id); // Use the new route
+
+        if (fileType === 'image') {
+            return (
+                <img
+                    src={filePath}
+                    alt={`Preview of ${upload.original_filename}`}
+                    className="my-2 h-auto max-h-60 max-w-full rounded-md border shadow-sm md:max-h-80"
+                />
+            );
+        } else if (fileType === 'pdf') {
+            return (
+                <iframe src={filePath} title={'PDF Preview of ' + upload.original_filename} className="my-2 h-96 w-full rounded-md border shadow-sm">
+                    <p className="p-4">Your browser does not support iframes to show PDF. Please use the "Open" or "Download" button.</p>
+                </iframe>
+            );
+        } else {
+            return (
+                <div className="text-muted-foreground my-2 flex items-center gap-3 rounded-md border bg-slate-50 p-4 dark:bg-slate-800">
+                    <FileType2 className="h-8 w-8 flex-shrink-0" />
+                    <span>No preview available for this file type. Please use "Open" or "Download".</span>
                 </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="service">Service Reports</TabsTrigger>
-            <TabsTrigger value="disbursements">Disbursements</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="overview" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Student Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-medium mb-2">Personal Details</h3>
-                    <dl className="space-y-2">
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Name</dt>
-                        <dd>{application.studentProfile?.user?.name}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Email</dt>
-                        <dd>{application.studentProfile?.user?.email}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Student ID</dt>
-                        <dd>{application.studentProfile?.student_id}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                  <div>
-                    <h3 className="font-medium mb-2">Academic Information</h3>
-                    <dl className="space-y-2">
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Major</dt>
-                        <dd>{application.studentProfile?.major}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Current GPA</dt>
-                        <dd>{application.studentProfile?.gpa}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-sm text-muted-foreground">Year Level</dt>
-                        <dd>{application.studentProfile?.year_level}</dd>
-                      </div>
-                    </dl>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Scholarship Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">{application.scholarshipProgram?.name}</h3>
-                    <p className="text-muted-foreground">{application.scholarshipProgram?.description}</p>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <h4 className="text-sm text-muted-foreground">Amount</h4>
-                      <p className="font-medium">${application.scholarshipProgram?.amount}</p>
+            );
+        }
+    };
+
+    const DocumentReviewForm: React.FC<{ docReq: DocumentRequirementType; upload?: DocumentUploadType }> = ({ docReq, upload }) => {
+        const { data, setData, post, processing, errors, reset } = useForm({
+            status: upload?.status || 'pending_review',
+            rejection_reason: upload?.rejection_reason || '',
+            _method: 'PATCH',
+        });
+
+        const handleSubmit = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!upload) return;
+            post(route('admin.documents.review', upload.id), {
+                preserveScroll: true,
+            });
+        };
+
+        if (!upload) {
+            return (
+                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950">
+                    <div className="flex items-center gap-2">
+                        <FileClock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                        <p className="dark:text-yellow-300\\ text-sm font-medium text-yellow-700">Document Not Uploaded</p>
                     </div>
-                    <div>
-                      <h4 className="text-sm text-muted-foreground">Academic Year</h4>
-                      <p className="font-medium">{application.scholarshipProgram?.academic_year}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm text-muted-foreground">Semester</h4>
-                      <p className="font-medium">{application.scholarshipProgram?.semester}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="documents" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Document Verification</CardTitle>
-                <CardDescription>
-                  Review and approve student submitted documents
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {application.documentUploads && application.documentUploads.length > 0 ? (
-                  <div className="space-y-4">
-                    {application.documentUploads.map((document) => (
-                      <div key={document.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium">{document.documentRequirement?.name}</h3>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {document.documentRequirement?.description}
-                            </p>
-                            <div className="flex items-center space-x-2">
-                              <Badge 
-                                variant={document.status === 'approved' ? 'success' : 
-                                  document.status === 'pending' ? 'secondary' : 'destructive'}
-                              >
-                                {formatStatus(document.status)}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                Uploaded: {new Date(document.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {document.rejection_reason && (
-                              <div className="mt-2">
-                                <p className="text-sm font-medium text-destructive">Rejection Reason:</p>
-                                <p className="text-sm text-muted-foreground">{document.rejection_reason}</p>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={`/storage/${document.file_path}`} target="_blank" rel="noopener noreferrer">
-                                <Eye className="h-4 w-4 mr-1" /> View
-                              </a>
-                            </Button>
-                            <Button size="sm" variant="outline" asChild>
-                              <a href={`/storage/${document.file_path}`} download>
-                                <Download className="h-4 w-4 mr-1" /> Download
-                              </a>
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              onClick={() => openDocumentReviewDialog(document)}
-                              disabled={document.status === 'approved'}
-                            >
-                              Review
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No documents have been uploaded yet.</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="service" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Community Service Reports</CardTitle>
-                <CardDescription>
-                  Review student service hour submissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {application.communityServiceReports && application.communityServiceReports.length > 0 ? (
-                  <div className="space-y-4">
-                    {application.communityServiceReports.map((report) => (
-                      <div key={report.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="font-medium">{report.organization_name}</h3>
-                            <p className="text-sm text-muted-foreground mb-2">
-                              {report.description}
-                            </p>
-                            <div className="grid grid-cols-2 gap-4 mb-2">
-                              <div>
-                                <p className="text-sm text-muted-foreground">Hours: <span className="font-medium">{report.hours}</span></p>
-                              </div>
-                              <div>
-                                <p className="text-sm text-muted-foreground">Date: <span className="font-medium">{new Date(report.service_date).toLocaleDateString()}</span></p>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <Badge 
-                                variant={report.status === 'approved' ? 'success' : 
-                                  report.status === 'pending' ? 'secondary' : 'destructive'}
-                              >
-                                {formatStatus(report.status)}
-                              </Badge>
-                              <span className="text-xs text-muted-foreground">
-                                Submitted: {new Date(report.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            {report.rejection_reason && (
-                              <div className="mt-2">
-                                <p className="text-sm font-medium text-destructive">Rejection Reason:</p>
-                                <p className="text-sm text-muted-foreground">{report.rejection_reason}</p>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            {report.verification_document && (
-                              <>
-                                <Button size="sm" variant="outline" asChild>
-                                  <a href={`/storage/${report.verification_document}`} target="_blank" rel="noopener noreferrer">
-                                    <Eye className="h-4 w-4 mr-1" /> View Document
-                                  </a>
-                                </Button>
-                                <Button size="sm" variant="outline" asChild>
-                                  <a href={`/storage/${report.verification_document}`} download>
-                                    <Download className="h-4 w-4 mr-1" /> Download
-                                  </a>
-                                </Button>
-                              </>
-                            )}
-                            <Button 
-                              size="sm" 
-                              onClick={() => openReportReviewDialog(report)}
-                              disabled={report.status === 'approved'}
-                            >
-                              Review
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No service reports have been submitted yet.</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="disbursements" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between">
-                <div>
-                  <CardTitle>Disbursement History</CardTitle>
-                  <CardDescription>
-                    Track scholarship payment information
-                  </CardDescription>
-                </div>
-                <Button 
-                  onClick={() => {
-                    setDialogType('create_disbursement');
-                    disbursementForm.reset();
-                    disbursementForm.setData({
-                      id: 0,
-                      amount: application.scholarshipProgram?.amount || 0,
-                      payment_method: '',
-                      reference_number: '',
-                      disbursement_date: new Date().toISOString().split('T')[0],
-                      notes: '',
-                      status: 'pending',
-                    });
-                    setOpenReviewDialog(true);
-                  }}
-                  disabled={!['documents_approved', 'eligibility_verified', 'enrolled', 'service_completed', 'disbursement_pending'].includes(application.status)}
-                >
-                  Create Disbursement
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {application.disbursements && application.disbursements.length > 0 ? (
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="py-3 px-4 text-left font-medium">Amount</th>
-                          <th className="py-3 px-4 text-left font-medium">Date</th>
-                          <th className="py-3 px-4 text-left font-medium">Method</th>
-                          <th className="py-3 px-4 text-left font-medium">Status</th>
-                          <th className="py-3 px-4 text-left font-medium">Notes</th>
-                          <th className="py-3 px-4 text-left font-medium">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {application.disbursements.map((disbursement) => (
-                          <tr key={disbursement.id} className="border-b hover:bg-muted/50">
-                            <td className="py-3 px-4">
-                              <div className="font-medium">${disbursement.amount}</div>
-                            </td>
-                            <td className="py-3 px-4">
-                              {new Date(disbursement.disbursement_date).toLocaleDateString()}
-                            </td>
-                            <td className="py-3 px-4">
-                              {disbursement.payment_method}
-                            </td>
-                            <td className="py-3 px-4">
-                              <Badge 
-                                variant={disbursement.status === 'processed' ? 'success' : 
-                                  disbursement.status === 'pending' ? 'warning' : 'secondary'}
-                              >
-                                {formatStatus(disbursement.status)}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-4">
-                               <div className="max-w-xs truncate">{disbursement.notes || '—'}</div>
-                            </td>
-                            <td className="py-3 px-4">
-                               <Button 
-                                 size="sm" 
-                                 onClick={() => {
-                                   setDialogType('edit_disbursement');
-                                   // Set up form with current disbursement data
-                                   disbursementForm.setData({
-                                     id: disbursement.id,
-                                     amount: disbursement.amount,
-                                     payment_method: disbursement.payment_method || '',
-                                     reference_number: disbursement.reference_number || '',
-                                     disbursement_date: new Date(disbursement.disbursement_date).toISOString().split('T')[0],
-                                     notes: disbursement.notes || '',
-                                     status: disbursement.status,
-                                   });
-                                   setOpenReviewDialog(true);
-                                 }}
-                                 variant="outline"
-                               >
-                                 Edit
-                               </Button>
-                             </td>
-                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="font-medium text-lg mb-2">No Disbursements Yet</h3>
-                    <p className="text-muted-foreground max-w-md mx-auto">
-                      Once the application is approved, disbursements will be processed and appear here.
+                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                        This {docReq.is_required ? 'required' : 'optional'} document has not been submitted by the student.
                     </p>
-                  </div>
+                </div>
+            );
+        }
+
+        const currentDocStatusConfig = getStatusConfig(upload.status);
+        const fileDisplayPath = route('admin.documents.view', upload.id); // Use new route for display/download links
+
+        return (
+            <form onSubmit={handleSubmit} className="bg-muted/20 dark:bg-background space-y-4 rounded-md border p-4 shadow">
+                <FilePreviewDisplay upload={upload} />
+
+                <div>
+                    <p className="text-md flex items-center font-semibold break-all">
+                        {getFileType(upload.original_filename) === 'image' && (
+                            <FileImage className="text-muted-foreground mr-1.5 h-4 w-4 flex-shrink-0" />
+                        )}
+                        {getFileType(upload.original_filename) === 'pdf' && (
+                            <FileType2 className="text-muted-foreground mr-1.5 h-4 w-4 flex-shrink-0" />
+                        )}
+                        {getFileType(upload.original_filename) === 'other' && (
+                            <FileTextIconLucide className="text-muted-foreground mr-1.5 h-4 w-4 flex-shrink-0" />
+                        )}
+                        {upload.original_filename}
+                    </p>
+                    <p className="text-muted-foreground\\ text-xs">Uploaded: {formatDate(upload.uploaded_at, true)}</p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={fileDisplayPath} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-1.5 h-3.5 w-3.5" />
+                            Open in New Tab
+                        </a>
+                    </Button>
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={fileDisplayPath} download={upload.original_filename}>
+                            <Download className="mr-1.5 h-3.5 w-3.5" />
+                            Download
+                        </a>
+                    </Button>
+                </div>
+
+                <Badge variant={currentDocStatusConfig.variant} className="my-2 text-xs whitespace-nowrap capitalize">
+                    <currentDocStatusConfig.icon className={cn('mr-1 h-3.5 w-3.5', currentDocStatusConfig.colorClass)} />
+                    Current Status: {currentDocStatusConfig.label}
+                </Badge>
+
+                <div className="border-border grid grid-cols-1 items-end gap-3 border-t pt-2 md:grid-cols-2">
+                    <div>
+                        <label htmlFor={`doc-status-${upload.id}`} className="text-xs font-medium">
+                            New Review Status
+                        </label>
+                        <Select value={data.status} onValueChange={(value) => setData('status', value)}>
+                            <SelectTrigger id={`doc-status-${upload.id}`} className="bg-background mt-1">
+                                <SelectValue placeholder="Select status..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {documentStatuses.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                        {opt.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        {errors.status && <p className="mt-1\\ text-xs text-red-500">{errors.status}</p>}
+                    </div>
+                    <Button type="submit" disabled={processing} size="sm" className="self-end">
+                        {processing ? 'Saving Review...' : 'Save Document Review'}
+                    </Button>
+                </div>
+
+                {data.status.startsWith('rejected_') && (
+                    <div>
+                        <label htmlFor={`doc-reason-${upload.id}`} className="text-xs font-medium">
+                            Rejection Reason (if applicable)
+                        </label>
+                        <Textarea
+                            id={`doc-reason-${upload.id}`}
+                            value={data.rejection_reason}
+                            onChange={(e) => setData('rejection_reason', e.target.value)}
+                            placeholder="Explain why the document was rejected..."
+                            className="bg-background mt-1 min-h-[60px]"
+                        />
+                        {errors.rejection_reason && <p className="mt-1\\ text-xs text-red-500">{errors.rejection_reason}</p>}
+                    </div>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
-      
-      {/* Review Dialog */}
-      <Dialog open={openReviewDialog} onOpenChange={setOpenReviewDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {dialogType === 'document' ? 'Review Document' : 
-               dialogType === 'report' ? 'Review Service Report' : 
-               dialogType === 'create_disbursement' ? 'Create Disbursement' :
-               dialogType === 'edit_disbursement' ? 'Edit Disbursement' :
-               'Update Application Status'}
-            </DialogTitle>
-            <DialogDescription>
-              {dialogType === 'document' ? 'Update the status of this document submission' : 
-               dialogType === 'report' ? 'Update the status of this service report' :
-               dialogType === 'create_disbursement' ? 'Create a new disbursement for this scholarship' :
-               dialogType === 'edit_disbursement' ? 'Edit the disbursement details' :
-               'Change the overall status of this application'}
-            </DialogDescription>
-          </DialogHeader>
-          
-          {dialogType === 'document' && selectedDocument && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="document-status">Status</Label>
-                <Select 
-                  value={documentForm.data.status} 
-                  onValueChange={(value) => documentForm.setData('status', value)}
-                >
-                  <SelectTrigger id="document-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected_invalid">Rejected: Invalid Document</SelectItem>
-                    <SelectItem value="rejected_incomplete">Rejected: Incomplete</SelectItem>
-                    <SelectItem value="rejected_incorrect_format">Rejected: Incorrect Format</SelectItem>
-                    <SelectItem value="rejected_unreadable">Rejected: Unreadable</SelectItem>
-                    <SelectItem value="rejected_other">Rejected: Other Reason</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {documentForm.data.status && documentForm.data.status.startsWith('rejected') && (
-                <div>
-                  <Label htmlFor="document-reason">Rejection Reason</Label>
-                  <Textarea 
-                    id="document-reason" 
-                    value={documentForm.data.rejection_reason}
-                    onChange={(e) => documentForm.setData('rejection_reason', e.target.value)}
-                    placeholder="Explain why this document was rejected"
-                  />
+                {upload.status.startsWith('rejected_') && upload.rejection_reason && data.status === upload.status && (
+                    <Alert variant="destructive" className="mt-2 text-xs">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Current Rejection Reason</AlertTitle>
+                        <AlertDescription>{upload.rejection_reason}</AlertDescription>
+                    </Alert>
+                )}
+            </form>
+        );
+    };
+
+    const overallStatusConfig = getStatusConfig(application.status);
+
+    return (
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title={`Application #${application.id}`} />
+
+            <div className="container mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+                {/* Header */}
+                <div className="mb-6">
+                    <Link
+                        href={route('admin.applications.index')}
+                        className="text-primary hover:text-primary/80 mb-3 inline-flex items-center text-sm font-medium"
+                    >
+                        <ArrowLeft className="mr-1.5 h-4 w-4" />
+                        Back to Applications
+                    </Link>
+                    <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+                                Application Review <span className="text-primary">#{application.id}</span>
+                            </h1>
+                            <p className="text-muted-foreground text-sm">
+                                Submitted by {student?.name || 'N/A'} on {formatDate(application.submitted_at)}
+                            </p>
+                        </div>
+                        <div className="flex flex-shrink-0 items-center gap-2">
+                            <Badge variant={overallStatusConfig.variant} className="px-3 py-1.5 text-sm capitalize">
+                                <overallStatusConfig.icon className={cn('mr-1.5 h-4 w-4', overallStatusConfig.colorClass)} />
+                                {overallStatusConfig.label}
+                            </Badge>
+                            <Dialog open={isStatusModalOpen} onOpenChange={setIsStatusModalOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="outline">
+                                        <Edit3 className="mr-2 h-4 w-4" />
+                                        Update Status
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>Update Application Status</DialogTitle>
+                                        <DialogDescription>
+                                            Change the overall status of this application and add administrative notes.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <form onSubmit={handleStatusUpdate} className="space-y-4 py-2">
+                                        <div>
+                                            <label htmlFor="application_status" className="mb-1 block text-sm font-medium">
+                                                New Status
+                                            </label>
+                                            <Select value={statusForm.status} onValueChange={(value) => setStatusFormData('status', value)}>
+                                                <SelectTrigger id="application_status">
+                                                    <SelectValue placeholder="Select new status..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {applicationStatuses.map((opt) => (
+                                                        <SelectItem key={opt.value} value={opt.value}>
+                                                            {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                            {statusErrors.status && <p className="mt-1 text-xs text-red-500">{statusErrors.status}</p>}
+                                        </div>
+                                        <div>
+                                            <label htmlFor="admin_notes" className="mb-1 block text-sm font-medium">
+                                                Admin Notes
+                                            </label>
+                                            <Textarea
+                                                id="admin_notes"
+                                                value={statusForm.admin_notes}
+                                                onChange={(e) => setStatusFormData('admin_notes', e.target.value)}
+                                                placeholder="Add any relevant notes for this status change..."
+                                                className="min-h-[100px]"
+                                            />
+                                            {statusErrors.admin_notes && <p className="mt-1 text-xs text-red-500">{statusErrors.admin_notes}</p>}
+                                        </div>
+                                        <DialogFooter className="pt-2 sm:justify-start">
+                                            <Button type="submit" disabled={statusProcessing}>
+                                                {statusProcessing ? 'Updating...' : 'Save Changes'}
+                                            </Button>
+                                            <DialogClose asChild>
+                                                <Button type="button" variant="outline">
+                                                    Cancel
+                                                </Button>
+                                            </DialogClose>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
+                    </div>
                 </div>
-              )}
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenReviewDialog(false)}>Cancel</Button>
-                <Button onClick={submitDocumentReview} disabled={!documentForm.data.status || 
-                  (documentForm.data.status.startsWith('rejected') && !documentForm.data.rejection_reason)}>
-                  Submit Review
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-          
-          {dialogType === 'report' && selectedReport && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="report-status">Status</Label>
-                <Select 
-                  value={reportForm.data.status} 
-                  onValueChange={(value) => reportForm.setData('status', value)}
-                >
-                  <SelectTrigger id="report-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="rejected_insufficient_hours">Rejected: Insufficient Hours</SelectItem>
-                    <SelectItem value="rejected_incomplete_documentation">Rejected: Incomplete Documentation</SelectItem>
-                    <SelectItem value="rejected_other">Rejected: Other Reason</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {reportForm.data.status && reportForm.data.status.startsWith('rejected') && (
-                <div>
-                  <Label htmlFor="report-reason">Rejection Reason</Label>
-                  <Textarea 
-                    id="report-reason" 
-                    value={reportForm.data.rejection_reason}
-                    onChange={(e) => reportForm.setData('rejection_reason', e.target.value)}
-                    placeholder="Explain why this service report was rejected"
-                  />
+
+                {/* Main Content Grid */}
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                    {/* Left Column: Overview */}
+                    <div className="space-y-6 lg:col-span-4">
+                        <Card>
+                            <CardHeader className="flex-row items-center gap-3 space-y-0">
+                                <Avatar className="h-12 w-12">
+                                    <AvatarFallback>{student?.name?.charAt(0)?.toUpperCase() || 'S'}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <CardTitle className="text-lg">{student?.name || 'Student Information'}</CardTitle>
+                                    <CardDescription>{student?.email || 'No email'}</CardDescription>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pt-4 text-sm">
+                                <p>
+                                    <span className="font-medium">School:</span> {studentProfile?.school_name || 'N/A'}
+                                </p>
+                                <p>
+                                    <span className="font-medium">Level:</span> {studentProfile?.school_level || 'N/A'} (
+                                    {studentProfile?.school_type ? studentProfile.school_type.replace('_', ' ') : 'N/A'})
+                                </p>
+                                {studentProfile?.student_id && (
+                                    <p>
+                                        <span className="font-medium">Student ID:</span> {studentProfile.student_id}
+                                    </p>
+                                )}
+                                {studentProfile?.gpa && (
+                                    <p>
+                                        <span className="font-medium">GPA:</span> {studentProfile.gpa.toFixed(2)}
+                                    </p>
+                                )}
+                                <Button asChild variant="link" className="text-primary mt-2 h-auto px-0">
+                                    <Link href={student ? route('admin.students.show', student.id) : '#'}>
+                                        View Full Profile <ExternalLink className="ml-1 h-3 w-3" />
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center text-lg">
+                                    <BookOpenText className="text-primary mr-2 h-5 w-5" />
+                                    Scholarship Program
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-1 text-sm">
+                                <p className="text-base font-semibold">{program?.name || 'N/A'}</p>
+                                <p>
+                                    <span className="font-medium">Semester:</span> {program?.semester || 'N/A'}
+                                </p>
+                                <p>
+                                    <span className="font-medium">Academic Year:</span> {program?.academic_year || 'N/A'}
+                                </p>
+                                <p>
+                                    <span className="font-medium">Deadline:</span> {formatDate(program?.application_deadline)}
+                                </p>
+                                <Button asChild variant="link" className="text-primary mt-2 h-auto px-0">
+                                    <Link href={program ? route('admin.scholarships.show', program.id) : '#'}>
+                                        View Program Details <ExternalLink className="ml-1 h-3 w-3" />
+                                    </Link>
+                                </Button>
+                            </CardContent>
+                        </Card>
+
+                        {application.admin_notes && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center text-lg">
+                                        <MessageSquare className="text-primary mr-2 h-5 w-5" />
+                                        Admin Notes
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="bg-muted/30 rounded-md p-4 text-sm whitespace-pre-wrap">
+                                    {application.admin_notes}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+
+                    {/* Right Column: Document Processing & Other Details */}
+                    <div className="space-y-6 lg:col-span-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center text-xl">
+                                    <ListChecks className="text-primary mr-2 h-6 w-6" />
+                                    Document Requirements
+                                </CardTitle>
+                                <CardDescription>
+                                    Review and manage uploaded documents for this application.
+                                    {allDocumentRequirements.length === 0 && ' No document requirements for this scholarship program.'}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {documentsWithStatus.length > 0
+                                    ? documentsWithStatus.map(({ requirement, upload }) => (
+                                          <div key={requirement.id} className="p-0">
+                                              <div className="mb-2">
+                                                  <h4 className="text-md flex items-center font-semibold">
+                                                      {requirement.name}
+                                                      {requirement.is_required && (
+                                                          <Badge variant="destructive" className="ml-2 text-xs">
+                                                              Required
+                                                          </Badge>
+                                                      )}
+                                                  </h4>
+                                                  <p className="text-muted-foreground text-xs">{requirement.description}</p>
+                                              </div>
+                                              <DocumentReviewForm docReq={requirement} upload={upload} />
+                                          </div>
+                                      ))
+                                    : allDocumentRequirements.length > 0 && (
+                                          <p className="text-muted-foreground py-4 text-center text-sm">
+                                              No documents have been uploaded by the student yet.
+                                          </p>
+                                      )}
+                            </CardContent>
+                        </Card>
+
+                        {application.communityServiceReports && application.communityServiceReports.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center text-xl">
+                                        <Award className="text-primary mr-2 h-6 w-6" />
+                                        Community Service
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {application.communityServiceReports.map((report) => (
+                                        <div key={report.id} className="rounded-md border p-3">
+                                            <p className="font-medium">
+                                                {report.organization_name} - {report.hours} hours
+                                            </p>
+                                            <p className="text-muted-foreground text-sm">{report.description}</p>
+                                            <p className="text-muted-foreground text-xs">
+                                                Date: {formatDate(report.service_date)} | Status:{' '}
+                                                <Badge variant="outline" className="capitalize">
+                                                    {getStatusConfig(report.status).label}
+                                                </Badge>
+                                            </p>
+                                            {/* Add review form/modal trigger here if needed for service reports */}
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {application.disbursements && application.disbursements.length > 0 && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="flex items-center text-xl">
+                                        <DollarSign className="text-primary mr-2 h-6 w-6" />
+                                        Disbursements
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-3">
+                                    {application.disbursements.map((dis) => (
+                                        <div key={dis.id} className="rounded-md border p-3">
+                                            <p className="font-medium">
+                                                {formatCurrency(dis.amount)} - {dis.payment_method}
+                                            </p>
+                                            <p className="text-muted-foreground text-sm">Ref: {dis.reference_number || 'N/A'}</p>
+                                            <p className="text-muted-foreground text-xs">
+                                                Date: {formatDate(dis.disbursement_date)} | Status:{' '}
+                                                <Badge variant="outline" className="capitalize">
+                                                    {getStatusConfig(dis.status).label}
+                                                </Badge>
+                                            </p>
+                                            {/* Add review/edit form/modal trigger here if needed for disbursements */}
+                                        </div>
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
                 </div>
-              )}
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenReviewDialog(false)}>Cancel</Button>
-                <Button onClick={submitReportReview} disabled={!reportForm.data.status || 
-                  (reportForm.data.status.startsWith('rejected') && !reportForm.data.rejection_reason)}>
-                  Submit Review
-                </Button>
-              </DialogFooter>
             </div>
-          )}
-          
-          {dialogType === 'status' && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="application-status">Status</Label>
-                <Select 
-                  value={statusForm.data.status} 
-                  onValueChange={(value) => statusForm.setData('status', value)}
-                >
-                  <SelectTrigger id="application-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="documents_pending">Documents Pending</SelectItem>
-                    <SelectItem value="documents_under_review">Documents Under Review</SelectItem>
-                    <SelectItem value="documents_approved">Documents Approved</SelectItem>
-                    <SelectItem value="documents_rejected">Documents Rejected</SelectItem>
-                    <SelectItem value="eligibility_verified">Eligibility Verified</SelectItem>
-                    <SelectItem value="enrolled">Enrolled</SelectItem>
-                    <SelectItem value="service_pending">Service Pending</SelectItem>
-                    <SelectItem value="service_completed">Service Completed</SelectItem>
-                    <SelectItem value="disbursement_pending">Disbursement Pending</SelectItem>
-                    <SelectItem value="disbursement_processed">Disbursement Processed</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="admin-notes">Admin Notes</Label>
-                <Textarea 
-                  id="admin-notes" 
-                  value={statusForm.data.admin_notes}
-                  onChange={(e) => statusForm.setData('admin_notes', e.target.value)}
-                  placeholder="Add notes about this application status change"
-                />
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenReviewDialog(false)}>Cancel</Button>
-                <Button onClick={updateApplicationStatus} disabled={!statusForm.data.status}>
-                  Update Status
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-          
-          {(dialogType === 'create_disbursement' || dialogType === 'edit_disbursement') && (
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="disbursement-amount">Amount ($)</Label>
-                <input
-                  id="disbursement-amount"
-                  type="number"
-                  value={disbursementForm.data.amount}
-                  onChange={(e) => disbursementForm.setData('amount', parseFloat(e.target.value))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  min="1"
-                  step="0.01"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="disbursement-method">Payment Method</Label>
-                <Select
-                  value={disbursementForm.data.payment_method}
-                  onValueChange={(value) => disbursementForm.setData('payment_method', value)}
-                >
-                  <SelectTrigger id="disbursement-method">
-                    <SelectValue placeholder="Select payment method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="direct_deposit">Direct Deposit</SelectItem>
-                    <SelectItem value="check">Check</SelectItem>
-                    <SelectItem value="credit_to_account">Credit to Student Account</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="disbursement-reference">Reference Number</Label>
-                <input
-                  id="disbursement-reference"
-                  type="text"
-                  value={disbursementForm.data.reference_number}
-                  onChange={(e) => disbursementForm.setData('reference_number', e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  placeholder="Optional reference number"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="disbursement-date">Disbursement Date</Label>
-                <input
-                  id="disbursement-date"
-                  type="date"
-                  value={disbursementForm.data.disbursement_date}
-                  onChange={(e) => disbursementForm.setData('disbursement_date', e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="disbursement-status">Status</Label>
-                <Select
-                  value={disbursementForm.data.status}
-                  onValueChange={(value) => disbursementForm.setData('status', value)}
-                >
-                  <SelectTrigger id="disbursement-status">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="processing">Processing</SelectItem>
-                    <SelectItem value="processed">Processed</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label htmlFor="disbursement-notes">Notes</Label>
-                <Textarea
-                  id="disbursement-notes"
-                  value={disbursementForm.data.notes}
-                  onChange={(e) => disbursementForm.setData('notes', e.target.value)}
-                  placeholder="Add notes about this disbursement"
-                />
-              </div>
-              
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setOpenReviewDialog(false)}>Cancel</Button>
-                <Button
-                  onClick={() => {
-                    if (dialogType === 'create_disbursement') {
-                      // Create new disbursement
-                      disbursementForm.post(route('admin.disbursements.store', application.id), {
-                        onSuccess: () => setOpenReviewDialog(false),
-                      });
-                    } else {
-                      // Update existing disbursement
-                      disbursementForm.patch(route('admin.disbursements.update', disbursementForm.data.id), {
-                        onSuccess: () => setOpenReviewDialog(false),
-                      });
-                    }
-                  }}
-                  disabled={!disbursementForm.data.amount || !disbursementForm.data.payment_method || !disbursementForm.data.disbursement_date || !disbursementForm.data.status}
-                >
-                  {dialogType === 'create_disbursement' ? 'Create Disbursement' : 'Update Disbursement'}
-                </Button>
-              </DialogFooter>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </AppLayout>
-  );
+        </AppLayout>
+    );
 }
