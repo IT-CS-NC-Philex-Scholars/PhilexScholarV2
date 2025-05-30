@@ -2,1034 +2,1097 @@ import React, { useState, useEffect } from 'react';
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, ScholarshipApplication, ScholarshipProgram, DocumentUpload, DocumentRequirement } from '@/types';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { CalendarIcon, FileTextIcon, CheckCircleIcon, AlertCircleIcon, XCircleIcon, 
-         ArrowUpIcon, DollarSignIcon, ClockIcon, FileIcon, CheckIcon, 
-         AwardIcon, BookOpenIcon, HelpCircleIcon, RocketIcon, StarIcon } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { motion } from 'framer-motion';
-import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { 
+    Calendar, 
+    FileText, 
+    CheckCircle2, 
+    AlertTriangle, 
+    XCircle, 
+    Upload, 
+    DollarSign, 
+    Clock, 
+    File, 
+    Check, 
+    Award,
+    BookOpen,
+    HelpCircle,
+    Rocket,
+    Star,
+    Timer,
+    TrendingUp,
+    Eye,
+    Download,
+    Edit,
+    Send,
+    MapPin,
+    Users,
+    Heart,
+    Zap,
+    Activity,
+    ArrowRight,
+    ChevronRight,
+    MoreHorizontal,
+    RefreshCcw,
+    AlertCircle,
+    Info
+} from 'lucide-react';
+import { toast } from 'sonner';
 
 interface DocumentUploadItem {
-  requirement: DocumentRequirement;
-  upload: DocumentUpload | null;
+    requirement: DocumentRequirement;
+    upload: DocumentUpload | null;
 }
 
 interface ApplicationShowProps {
-  application: ScholarshipApplication;
-  scholarship: ScholarshipProgram;
-  documentUploads: DocumentUploadItem[];
-  canSubmit: boolean;
+    application: ScholarshipApplication;
+    scholarship: ScholarshipProgram;
+    documentUploads: DocumentUploadItem[];
+    canSubmit: boolean;
 }
 
 export default function Show({ 
-  application, 
-  scholarship, 
-  documentUploads,
-  canSubmit 
+    application, 
+    scholarship, 
+    documentUploads,
+    canSubmit 
 }: ApplicationShowProps) {
-  const [activeUploadId, setActiveUploadId] = useState<number | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  
-  useEffect(() => {
-    // Set loaded to true after initial render to trigger animations
-    setLoaded(true);
-  }, []);
-  
-  // Helper function to format status display
-  const formatStatus = (status: string) => {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-  };
-  
-  // Helper function to get status badge color
-  const getStatusBadgeVariant = (status: string) => {
-    if (['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'approved'].includes(status)) {
-      return 'success';
-    }
-    if (['documents_rejected', 'rejected', 'rejected_invalid', 'rejected_incomplete', 'rejected_incorrect_format', 'rejected_unreadable', 'rejected_other'].includes(status)) {
-      return 'destructive';
-    }
-    if (['disbursement_pending', 'service_pending', 'documents_under_review', 'pending_review'].includes(status)) {
-      return 'warning';
-    }
-    return 'secondary';
-  };
-  
-  // Helper function to get status icon
-  const getStatusIcon = (status: string) => {
-    if (['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'approved'].includes(status)) {
-      return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-    }
-    if (['documents_rejected', 'rejected', 'rejected_invalid', 'rejected_incomplete', 'rejected_incorrect_format', 'rejected_unreadable', 'rejected_other'].includes(status)) {
-      return <XCircleIcon className="h-5 w-5 text-destructive" />;
-    }
-    if (['disbursement_pending', 'service_pending', 'documents_under_review', 'pending_review'].includes(status)) {
-      return <ClockIcon className="h-5 w-5 text-amber-500" />;
-    }
-    return <FileTextIcon className="h-5 w-5 text-muted-foreground" />;
-  };
-  
-  // Get fun status description for students
-  const getStatusDescription = (status: string) => {
-    if (['completed', 'disbursement_processed'].includes(status)) {
-      return "Congratulations! Your scholarship has been awarded! 🎉";
-    }
-    if (['service_completed'].includes(status)) {
-      return "Great job completing your community service! Disbursement is next.";
-    }
-    if (['enrolled'].includes(status)) {
-      return "You're in! Time to complete community service hours.";
-    }
-    if (['eligibility_verified'].includes(status)) {
-      return "You've been selected! Final enrollment process is underway.";
-    }
-    if (['documents_approved'].includes(status)) {
-      return "Your documents look great! We're verifying your eligibility.";
-    }
-    if (['documents_rejected'].includes(status)) {
-      return "Oops! There's an issue with your documents. Please check and update them.";
-    }
-    if (['documents_under_review'].includes(status)) {
-      return "We're reviewing your documents. Hang tight!";
-    }
-    if (['submitted', 'documents_pending'].includes(status)) {
-      return "Application received! We'll review your documents soon.";
-    }
-    if (['draft'].includes(status)) {
-      return "Let's finish your application by uploading all required documents.";
-    }
-    return "Your application is being processed.";
-  };
-  
-  // Calculate progress based on application status
-  const calculateProgress = () => {
-    const statuses = [
-      'draft', 'submitted', 'documents_pending', 'documents_under_review', 'documents_approved',
-      'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 
-      'disbursement_pending', 'disbursement_processed', 'completed'
+    const [activeTab, setActiveTab] = useState('overview');
+    const [showUploadDialog, setShowUploadDialog] = useState(false);
+    const [selectedRequirement, setSelectedRequirement] = useState<DocumentRequirement | null>(null);
+    
+    // Helper functions
+    const formatStatus = (status: string) => {
+        return status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    };
+    
+    const getStatusInfo = (status: string) => {
+        if (['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'approved'].includes(status)) {
+            return { color: 'green', bgColor: 'bg-green-500', icon: CheckCircle2, variant: 'default' as const };
+        }
+        if (status.startsWith('rejected_') || status === 'rejected') {
+            return { color: 'red', bgColor: 'bg-red-500', icon: XCircle, variant: 'destructive' as const };
+        }
+        if (['disbursement_pending', 'service_pending', 'documents_under_review', 'pending_review'].includes(status)) {
+            return { color: 'blue', bgColor: 'bg-blue-500', icon: Clock, variant: 'secondary' as const };
+        }
+        if (['enrolled'].includes(status)) {
+            return { color: 'purple', bgColor: 'bg-purple-500', icon: Rocket, variant: 'secondary' as const };
+        }
+        return { color: 'gray', bgColor: 'bg-gray-500', icon: FileText, variant: 'outline' as const };
+    };
+
+    const getStatusDescription = (status: string) => {
+        const descriptions = {
+            'draft': 'Complete your application by uploading all required documents.',
+            'submitted': 'Your application is being reviewed by our team.',
+            'documents_approved': 'Documents approved! Eligibility verification in progress.',
+            'eligibility_verified': 'You\'ve been selected! Enrollment process underway.',
+            'enrolled': 'Congratulations! Complete your community service requirement.',
+            'service_completed': 'Service complete! Disbursement being processed.',
+            'disbursement_processed': 'Scholarship awarded! Funds have been disbursed.',
+            'completed': 'Application completed successfully! 🎉',
+            'documents_rejected': 'Some documents need attention. Please review and resubmit.',
+            'rejected': 'Application not approved at this time.'
+        };
+        return descriptions[status as keyof typeof descriptions] || 'Application is being processed.';
+    };
+    
+    const calculateProgress = () => {
+        const statuses = [
+            'draft', 'submitted', 'documents_pending', 'documents_under_review', 'documents_approved',
+            'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 
+            'disbursement_pending', 'disbursement_processed', 'completed'
+        ];
+        const index = statuses.indexOf(application.status);
+        return index === -1 ? 0 : Math.round((index / (statuses.length - 1)) * 100);
+    };
+
+    const progressPercentage = calculateProgress();
+    const statusInfo = getStatusInfo(application.status);
+    const StatusIcon = statusInfo.icon;
+
+    const submitApplication = () => {
+        router.post(route('student.applications.submit', application.id), {}, {
+            onSuccess: () => {
+                toast.success('Application submitted successfully!');
+            },
+            onError: () => {
+                toast.error('Failed to submit application. Please try again.');
+            }
+        });
+    };
+
+    const openUploadDialog = (requirement: DocumentRequirement) => {
+        setSelectedRequirement(requirement);
+        setShowUploadDialog(true);
+    };
+
+    const breadcrumbs: BreadcrumbItem[] = [
+        { title: 'Student Dashboard', href: route('student.dashboard') },
+        { title: 'My Applications', href: route('student.applications.index') },
+        { title: 'Application Details' }
     ];
-    const index = statuses.indexOf(application.status);
-    if (index === -1) return 0;
-    return Math.round((index / (statuses.length - 1)) * 100);
-  };
-  
-  const applicationProgress = calculateProgress();
-  
-  // Get emoji for status to make it more friendly
-  const getStatusEmoji = (status: string) => {
-    if (['completed', 'disbursement_processed'].includes(status)) {
-      return "🎓";
-    }
-    if (['service_completed', 'documents_approved', 'eligibility_verified'].includes(status)) {
-      return "✅";
-    }
-    if (['enrolled'].includes(status)) {
-      return "🚀";
-    }
-    if (['documents_under_review', 'pending_review', 'service_pending', 'disbursement_pending'].includes(status)) {
-      return "⏳";
-    }
-    if (['documents_rejected', 'rejected'].includes(status)) {
-      return "❗";
-    }
-    return "📝";
-  };
-  
-  const submitApplication = () => {
-    router.post(route('student.applications.submit', application.id));
-  };
 
-  const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Student Dashboard', href: route('student.dashboard') },
-    { title: 'My Applications', href: route('student.applications.index') },
-    { title: 'Application Details' }
-  ];
-  
-  // Animation variants for Framer Motion
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        staggerChildren: 0.1,
-        delayChildren: 0.2
-      }
-    }
-  };
-  
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 100 }
-    }
-  };
+    // Count approved and total documents
+    const approvedDocs = documentUploads.filter(doc => 
+        doc.upload && ['approved', 'documents_approved'].includes(doc.upload.status)
+    ).length;
+    const totalDocs = documentUploads.length;
+    const documentsProgress = totalDocs > 0 ? (approvedDocs / totalDocs) * 100 : 0;
 
-  return (
-    <AppLayout breadcrumbs={breadcrumbs}>
-      <Head title="Application Details" />
-      
-      <TooltipProvider>
-        <motion.div 
-          className="max-w-6xl mx-auto space-y-8" 
-          variants={containerVariants}
-          initial="hidden"
-          animate={loaded ? "visible" : "hidden"}
-        >
-          {/* Application Header - Fun student-friendly design */}
-          <motion.div variants={itemVariants} className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary/30 to-primary/10 rounded-xl blur-3xl opacity-50 transform -translate-y-1/2"></div>
-            <div className="relative rounded-2xl bg-gradient-to-r from-primary to-primary/80 p-6 text-primary-foreground shadow-lg overflow-hidden">
-              {/* Wave background elements */}
-              <div className="absolute top-0 left-0 right-0 h-24 overflow-hidden opacity-20">
-                <svg className="absolute bottom-0 w-full h-16" viewBox="0 0 1440 320" xmlns="http://www.w3.org/2000/svg">
-                  <path fill="currentColor" fillOpacity="1" d="M0,288L48,272C96,256,192,224,288,213.3C384,203,480,213,576,229.3C672,245,768,267,864,272C960,277,1056,267,1152,240C1248,213,1344,171,1392,149.3L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
-                </svg>
-              </div>
-              
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 z-10 relative">
-                <div className="flex items-start gap-4">
-                  <motion.div 
-                    className="hidden sm:flex h-16 w-16 rounded-full bg-white/30 backdrop-blur-md items-center justify-center flex-shrink-0 border-2 border-white/50 shadow-lg"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", delay: 0.3 }}
-                  >
-                    <span className="text-2xl">{getStatusEmoji(application.status)}</span>
-                  </motion.div>
-                  <div>
-                    <motion.h1 
-                      className="text-2xl md:text-3xl font-bold tracking-tight"
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                    >
-                      {scholarship.name}
-                    </motion.h1>
-                    <motion.p 
-                      className="text-primary-foreground/90 text-lg"
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.3 }}
-                    >
-                      {scholarship.semester} | {scholarship.academic_year}
-                    </motion.p>
-                    <motion.div 
-                      className="flex flex-wrap items-center mt-3 gap-2"
-                      initial={{ y: 10, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <Badge className="bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 border-white/20 text-sm px-3 py-1 shadow-sm">
-                        <DollarSignIcon className="h-3.5 w-3.5 mr-1" />
-                        ${scholarship.per_student_budget.toLocaleString()}
-                      </Badge>
-                      <Badge className="bg-white/20 text-white backdrop-blur-sm hover:bg-white/30 border-white/20 text-sm px-3 py-1 shadow-sm">
-                        <FileTextIcon className="h-3.5 w-3.5 mr-1" />
-                        #{application.id}
-                      </Badge>
-                    </motion.div>
-                  </div>
-                </div>
-
-                <motion.div 
-                  className="flex flex-col gap-3"
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.5, type: "spring" }}
-                >
-                  <div className="p-3 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 shadow-sm">
-                    <div className="flex items-center gap-3 mb-2">
-                      {getStatusIcon(application.status)}
-                      <Badge className="text-sm px-3 py-1" variant={getStatusBadgeVariant(application.status) as any}>
-                        {formatStatus(application.status)}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-white/90 mb-2">{getStatusDescription(application.status)}</p>
-                    <div className="w-full">
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span>Application Progress</span>
-                        <span>{applicationProgress}%</span>
-                      </div>
-                      <div className="relative">
-                        <Progress 
-                          value={applicationProgress} 
-                          className="h-2 bg-white/20" 
-                          indicatorClassName="bg-white relative overflow-hidden"
-                        />
-                        {/* Animated progress glow effect */}
-                        <div 
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-transparent to-white/60 w-20 animate-shimmer"
-                          style={{ width: `${applicationProgress * 0.9}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </div>
-          </motion.div>
-        
-          {/* Main Content Tabs */}
-          <motion.div variants={itemVariants}>
-            <Tabs defaultValue="overview" className="mb-22">
-              <TabsList className="mb-6 w-full grid grid-cols-3 lg:w-auto lg:inline-flex bg-card/50 backdrop-blur-sm border border-border shadow-sm rounded-xl p-1 overflow-hidden">
-                <TabsTrigger value="overview" className="text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground rounded-lg transition-all">
-                  <FileTextIcon className="h-4 w-4 mr-2" />
-                  Overview
-                </TabsTrigger>
-                <TabsTrigger value="documents" className="text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground rounded-lg transition-all">
-                  <FileIcon className="h-4 w-4 mr-2" />
-                  Documents
-                </TabsTrigger>
-                <TabsTrigger value="timeline" className="text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-foreground rounded-lg transition-all">
-                  <ClockIcon className="h-4 w-4 mr-2" />
-                  Timeline
-                </TabsTrigger>
-              </TabsList>
-          
-              <TabsContent value="overview" className="space-y-6">
-                {/* Status Card - Simplified & Visual */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <motion.div 
-                    variants={itemVariants}
-                    className="group relative overflow-hidden rounded-2xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-300"
-                  >
-                    <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-blue-500/5 blur-3xl group-hover:bg-blue-500/10 transition-all duration-700"></div>
-                    <div className="p-6 relative z-10">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <AwardIcon className="h-5 w-5 text-primary" />
-                        </div>
-                        <h3 className="text-lg font-medium">Scholarship Details</h3>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <motion.div 
-                          className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border gap-4"
-                          whileHover={{ y: -2, transition: { duration: 0.2 } }}
-                        >
-                          <div className="flex items-center gap-3">
-                            <DollarSignIcon className="h-6 w-6 text-green-500" />
-                            <div>
-                              <h4 className="text-sm font-medium text-muted-foreground">Award Amount</h4>
-                              <p className="font-semibold text-lg">${scholarship.per_student_budget.toLocaleString()}</p>
-                            </div>
-                          </div>
-                          <Badge variant="outline" className="font-medium py-1.5">
-                            {scholarship.academic_year}
-                          </Badge>
-                        </motion.div>
-                        
-                        <motion.div 
-                          className="p-3 bg-gradient-to-r from-primary/5 to-transparent rounded-xl border border-primary/20 gap-3"
-                          whileHover={{ scale: 1.02, transition: { duration: 0.2 } }}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-full bg-primary/10 flex-shrink-0 mt-0.5">
-                              <BookOpenIcon className="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-medium text-primary/80 mb-1">About This Scholarship</h4>
-                              <p className="text-sm">{scholarship.description || "This is a scholarship program offered for eligible students during the specified academic year."}</p>
-                            </div>
-                          </div>
-                        </motion.div>
-                      </div>
-                    </div>
-                  </motion.div>
-                  
-                  <motion.div 
-                    variants={itemVariants}
-                    className="group relative overflow-hidden rounded-2xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-300"
-                  >
-                    <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-indigo-500/5 blur-3xl group-hover:bg-indigo-500/10 transition-all duration-700"></div>
-                    <div className="p-6 relative z-10">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <FileTextIcon className="h-5 w-5 text-primary" />
-                        </div>
-                        <h3 className="text-lg font-medium">Application Status</h3>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <motion.div 
-                          className="flex flex-col p-4 rounded-xl"
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.3 }}
-                          style={{
-                            backgroundColor: 
-                              ['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified'].includes(application.status) 
-                                ? 'rgba(34, 197, 94, 0.1)' // green
-                                : ['documents_rejected', 'rejected'].includes(application.status) 
-                                  ? 'rgba(239, 68, 68, 0.1)' // red
-                                  : 'rgba(59, 130, 246, 0.1)', // blue
-                            borderColor: 
-                              ['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified'].includes(application.status) 
-                                ? 'rgba(34, 197, 94, 0.2)' 
-                                : ['documents_rejected', 'rejected'].includes(application.status) 
-                                  ? 'rgba(239, 68, 68, 0.2)' 
-                                  : 'rgba(59, 130, 246, 0.2)',
-                          }}
-                          className="border"
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            {getStatusIcon(application.status)}
-                            <p className="font-semibold">{formatStatus(application.status)}</p>
-                          </div>
-                          <p className="text-sm">{getStatusDescription(application.status)}</p>
-                        </motion.div>
-                        
-                        {(application.submitted_at || application.reviewed_at) && (
-                          <div className="border-t border-border mt-4 pt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {application.submitted_at && (
-                              <motion.div 
-                                className="flex items-start gap-3"
-                                whileHover={{ x: 2 }}
-                              >
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-500/20">
-                                        <CalendarIcon className="h-4 w-4 text-blue-500" />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Submission Date</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                                <div>
-                                  <h4 className="text-xs font-medium text-muted-foreground">Submitted</h4>
-                                  <p className="font-medium">{new Date(application.submitted_at).toLocaleDateString(undefined, { 
-                                    year: 'numeric', month: 'short', day: 'numeric' 
-                                  })}</p>
-                                </div>
-                              </motion.div>
-                            )}
-                            
-                            {application.reviewed_at && (
-                              <motion.div 
-                                className="flex items-start gap-3"
-                                whileHover={{ x: 2 }}
-                              >
-                                <TooltipProvider>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <div className="p-2 rounded-full bg-green-100 dark:bg-green-500/20">
-                                        <CheckIcon className="h-4 w-4 text-green-500" />
-                                      </div>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Review Date</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </TooltipProvider>
-                                <div>
-                                  <h4 className="text-xs font-medium text-muted-foreground">Reviewed</h4>
-                                  <p className="font-medium">{new Date(application.reviewed_at).toLocaleDateString(undefined, { 
-                                    year: 'numeric', month: 'short', day: 'numeric' 
-                                  })}</p>
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      
-                      {application.admin_notes && (
-                        <motion.div 
-                          className="mt-6 pt-4 border-t border-border"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: 0.5 }}
-                        >
-                          <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-500/20 flex-shrink-0 mt-0.5">
-                              <HelpCircleIcon className="h-4 w-4 text-amber-500" />
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-medium mb-1">Admin Notes</h4>
-                              <div className="p-3 bg-muted/30 rounded-lg border border-border">
-                                <p className="text-sm">{application.admin_notes}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </div>
-                    
-                    {application.status === 'enrolled' && (
-                      <div className="px-6 pb-6 mt-2">
-                        <Button asChild className="w-full" size="lg">
-                          <Link href={route('student.community-service.create', application.id)}>
-                            <FileTextIcon className="h-4 w-4 mr-2" />
-                            Submit Community Service Report
-                          </Link>
-                        </Button>
-                      </div>
-                    )}
-                  </motion.div>
-                </div>
-        
-              </TabsContent>
-          
-              <TabsContent value="documents" className="space-y-6">
-                {/* Document Uploads Card with modern UI */}
-                <motion.div variants={itemVariants}>
-                  <div className="mb-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-950 dark:to-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800">
-                    <div className="flex items-start gap-3">
-                      <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full mt-0.5">
-                        <FileTextIcon className="h-5 w-5 text-blue-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium">
-                          {application.status === 'draft' ? (
-                            'Complete Your Application'
-                          ) : application.status === 'submitted' || application.status === 'documents_pending' ? (
-                            'Documents Awaiting Review'
-                          ) : application.status === 'documents_under_review' ? (
-                            'Documents Under Review'
-                          ) : application.status === 'documents_rejected' ? (
-                            'Document Issues Found'
-                          ) : (
-                            'Documents Processed'
-                          )}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {application.status === 'draft' ? (
-                            'Upload all required documents below to submit your application.'
-                          ) : application.status === 'submitted' || application.status === 'documents_pending' ? (
-                            'Your documents are waiting for our team to review them.'
-                          ) : application.status === 'documents_under_review' ? (
-                            'Our team is currently reviewing your submitted documents.'
-                          ) : application.status === 'documents_rejected' ? (
-                            'One or more documents need your attention. Please check them below.'
-                          ) : (
-                            'All your documents have been processed successfully.'
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    {documentUploads.map(({ requirement, upload }, index) => (
-                      <motion.div 
-                        key={requirement.id} 
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        transition={{ delay: 0.1 * index }}
-                        className="rounded-xl border border-border bg-card overflow-hidden shadow-sm hover:shadow-md transition-all duration-300"
-                        whileHover={{ y: -2 }}
-                      >
-                        <div className="p-4 sm:p-6">
-                          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                                  <FileIcon className="h-5 w-5 text-primary" />
-                                </div>
-                                <div>
-                                  <h3 className="font-medium text-base">{requirement.name}</h3>
-                                  <p className="text-xs text-muted-foreground">{requirement.description}</p>
-                                </div>
-                              </div>
-                              
-                              {/* Status Badge with enhanced visualization */}
-                              {upload && (
-                                <div className="mt-4 p-3 rounded-lg" style={{
-                                  backgroundColor: 
-                                    ['completed', 'approved', 'documents_approved'].includes(upload.status) 
-                                      ? 'rgba(34, 197, 94, 0.1)' // green
-                                      : ['rejected', 'documents_rejected', 'rejected_invalid', 'rejected_incomplete', 'rejected_incorrect_format', 'rejected_unreadable', 'rejected_other'].includes(upload.status) 
-                                        ? 'rgba(239, 68, 68, 0.1)' // red
-                                        : 'rgba(59, 130, 246, 0.1)', // blue
-                                  borderColor: 
-                                    ['completed', 'approved', 'documents_approved'].includes(upload.status) 
-                                      ? 'rgba(34, 197, 94, 0.2)' 
-                                      : ['rejected', 'documents_rejected', 'rejected_invalid', 'rejected_incomplete', 'rejected_incorrect_format', 'rejected_unreadable', 'rejected_other'].includes(upload.status) 
-                                        ? 'rgba(239, 68, 68, 0.2)' 
-                                        : 'rgba(59, 130, 246, 0.2)',
-                                }} className="border">
-                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-                                    <div className="flex items-center gap-1.5">
-                                      {getStatusIcon(upload.status)}
-                                      <Badge variant={getStatusBadgeVariant(upload.status) as any} className="px-2.5 py-1">
-                                        {formatStatus(upload.status)}
-                                      </Badge>
-                                    </div>
-                                    <span className="text-xs text-muted-foreground">
-                                      Uploaded on {new Date(upload.uploaded_at).toLocaleDateString(undefined, {
-                                        year: 'numeric', month: 'short', day: 'numeric'
-                                      })}
-                                    </span>
-                                  </div>
-                                </div>
-                              )}
-                              
-                              {upload?.rejection_reason && (
-                                <motion.div 
-                                  initial={{ opacity: 0, height: 0 }}
-                                  animate={{ opacity: 1, height: 'auto' }}
-                                  className="mt-3 p-3 bg-destructive/10 rounded-md border border-destructive/20 text-sm text-destructive"
-                                >
-                                  <div className="flex items-start gap-2">
-                                    <AlertCircleIcon className="h-5 w-5 flex-shrink-0 mt-0.5" />
-                                    <div>
-                                      <span className="font-medium">Rejection Reason:</span>
-                                      <p className="mt-1">{upload.rejection_reason}</p>
-                                    </div>
-                                  </div>
-                                </motion.div>
-                              )}
-                              
-                              {/* Show file name if uploaded */}
-                              {upload?.original_filename && (
-                                <div className="mt-4 p-3 bg-muted/30 rounded-lg border border-border">
-                                  <div className="flex items-center gap-2">
-                                    <div className="p-1.5 rounded-md bg-muted">
-                                      <FileIcon className="h-4 w-4 text-muted-foreground" />
-                                    </div>
-                                    <div>
-                                      <span className="text-xs text-muted-foreground">File Name:</span>
-                                      <p className="font-medium text-sm">{upload.original_filename}</p>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            
-                            {/* Upload Button/Form */}
-                            {(application.status === 'draft' || application.status === 'documents_rejected') && (
-                              <div className="flex-shrink-0">
-                                <DocumentUploadForm 
-                                  applicationId={application.id}
-                                  requirementId={requirement.id}
-                                  isActive={activeUploadId === requirement.id}
-                                  onActiveChange={(isActive) => setActiveUploadId(isActive ? requirement.id : null)}
-                                  existingFileName={upload?.original_filename}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                  
-                  {canSubmit && (
-                    <motion.div 
-                      className="mt-8 pt-6 border-t border-border"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <div className="w-full rounded-xl border border-primary/30 bg-gradient-to-r from-primary/5 to-transparent p-5 mb-6">
-                        <div className="flex items-start gap-4">
-                          <div className="rounded-full p-3 bg-primary/10">
-                            <CheckCircleIcon className="h-6 w-6 text-primary" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium text-lg mb-1">Ready to Submit</h4>
-                            <p className="text-muted-foreground">
-                              Please review all your documents before submitting. Once submitted, your application will be reviewed by our team.
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <motion.div 
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="flex justify-center"
-                      >
-                        <Button 
-                          onClick={submitApplication} 
-                          className="px-8 py-6 text-lg shadow-md" 
-                          size="lg"
-                        >
-                          <ArrowUpIcon className="h-5 w-5 mr-2" />
-                          Submit Application
-                        </Button>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </motion.div>
-              </TabsContent>
-          
-              <TabsContent value="timeline" className="space-y-6">
-                {/* Application Timeline Card - Animated & Visual */}
-                <motion.div variants={itemVariants}>
-                  <div className="mb-5 flex justify-center">
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 text-sm rounded-full">
-                      <ClockIcon className="h-3.5 w-3.5 mr-1.5" />
-                      Application Progress Timeline
-                    </Badge>
-                  </div>
-                  
-                  <div className="relative max-w-3xl mx-auto bg-card/50 rounded-2xl border border-border p-6 shadow-sm">
-                    <div className="relative border-l-2 border-primary/30 ml-6 pl-8 py-2 space-y-12">
-                      {/* Step 1: Created */}
-                      <motion.div 
-                        className="relative" 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.1 }}
-                      >
-                        <div className={cn(
-                          "absolute -left-[44px] w-10 h-10 flex items-center justify-center rounded-full shadow-md",
-                          application.status === 'draft' 
-                            ? "bg-gradient-to-br from-primary to-blue-600 text-white ring-4 ring-primary/20" 
-                            : "bg-primary/10 text-primary"
-                        )}>
-                          <FileTextIcon className="h-5 w-5" />
-                        </div>
-                        <div className={cn(
-                          "rounded-xl p-4",
-                          application.status === 'draft' ? "bg-primary/5 border border-primary/20" : ""  
-                        )}>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-lg">Application Started</h3>
-                            {application.status === 'draft' && (
-                              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">Current Step</Badge>
-                            )}  
-                          </div>
-                          <p className="text-muted-foreground mt-1">
-                            Your application has been created and is waiting for you to upload required documents.
-                          </p>
-                          <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                            <CalendarIcon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />
-                            {new Date(application.created_at).toLocaleDateString(undefined, {
-                              year: 'numeric', month: 'short', day: 'numeric'
-                            })}
-                          </div>
-                        </div>
-                      </motion.div>
-                      
-                      {/* Step 2: Submitted */}
-                      <motion.div 
-                        className="relative" 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 }}
-                      >
-                        <div className={cn(
-                          "absolute -left-[44px] w-10 h-10 flex items-center justify-center rounded-full shadow-md",
-                          ['submitted', 'documents_pending', 'documents_under_review', 'documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(application.status) 
-                            ? "bg-gradient-to-br from-primary to-blue-600 text-white ring-4 ring-primary/20" 
-                            : application.status === 'documents_rejected' 
-                              ? "bg-gradient-to-br from-red-500 to-red-600 text-white ring-4 ring-red-500/20" 
-                              : "bg-muted/80 text-muted-foreground"
-                        )}>
-                          <ArrowUpIcon className="h-5 w-5" />
-                        </div>
-                        <div className={cn(
-                          "rounded-xl p-4",
-                          ['submitted', 'documents_pending'].includes(application.status) 
-                            ? "bg-primary/5 border border-primary/20" 
-                            : application.status === 'documents_rejected' 
-                              ? "bg-red-500/5 border border-red-500/20" 
-                              : ""
-                        )}>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-lg">Documents Submitted</h3>
-                            {['submitted', 'documents_pending'].includes(application.status) && (
-                              <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20">Current Step</Badge>
-                            )}
-                            {application.status === 'documents_rejected' && (
-                              <Badge variant="outline" className="bg-red-500/5 text-red-500 border-red-500/20">Action Needed</Badge>
-                            )}
-                          </div>
-                          <p className="text-muted-foreground mt-1">
-                            {application.submitted_at 
-                              ? "All required documents have been submitted and are awaiting review by our team." 
-                              : "This step is pending completion of document uploads."}
-                          </p>
-                          {application.submitted_at && (
-                            <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                              <CalendarIcon className="h-3.5 w-3.5 mr-1.5 text-primary/70" />
-                              {new Date(application.submitted_at).toLocaleDateString(undefined, {
-                                year: 'numeric', month: 'short', day: 'numeric'
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                      
-                      {/* Step 3: Documents Reviewed */}
-                      <motion.div 
-                        className="relative" 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.3 }}
-                      >
-                        <div className={cn(
-                          "absolute -left-[44px] w-10 h-10 flex items-center justify-center rounded-full shadow-md",
-                          ['documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(application.status) 
-                            ? "bg-gradient-to-br from-green-500 to-green-600 text-white ring-4 ring-green-500/20" 
-                            : application.status === 'documents_under_review' 
-                              ? "bg-gradient-to-br from-amber-400 to-amber-500 text-white ring-4 ring-amber-500/20" 
-                              : "bg-muted/80 text-muted-foreground"
-                        )}>
-                          <CheckCircleIcon className="h-5 w-5" />
-                        </div>
-                        <div className={cn(
-                          "rounded-xl p-4",
-                          application.status === 'documents_under_review' 
-                            ? "bg-amber-500/5 border border-amber-500/20" 
-                            : ['documents_approved', 'eligibility_verified'].includes(application.status) 
-                              ? "bg-green-500/5 border border-green-500/20" 
-                              : ""
-                        )}>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-lg">Document Review</h3>
-                            {application.status === 'documents_under_review' && (
-                              <Badge variant="outline" className="bg-amber-500/5 text-amber-500 border-amber-500/20">In Progress</Badge>
-                            )}
-                            {['documents_approved', 'eligibility_verified'].includes(application.status) && (
-                              <Badge variant="outline" className="bg-green-500/5 text-green-500 border-green-500/20">Completed</Badge>
-                            )}
-                          </div>
-                          <p className="text-muted-foreground mt-1">
-                            {['documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(application.status) 
-                              ? "All your documents have been reviewed and approved!" 
-                              : application.status === 'documents_under_review' 
-                                ? "Your documents are currently being reviewed by our team." 
-                                : "This step will occur after documents are submitted."}
-                          </p>
-                          {application.reviewed_at && (
-                            <div className="flex items-center mt-2 text-xs text-muted-foreground">
-                              <CalendarIcon className="h-3.5 w-3.5 mr-1.5 text-green-500/70" />
-                              {new Date(application.reviewed_at).toLocaleDateString(undefined, {
-                                year: 'numeric', month: 'short', day: 'numeric'
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      </motion.div>
-                      
-                      {/* Step 4: Final Award */}
-                      <motion.div 
-                        className="relative" 
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 }}
-                      >
-                        <div className={cn(
-                          "absolute -left-[44px] w-10 h-10 flex items-center justify-center rounded-full shadow-md",
-                          ['completed', 'disbursement_processed'].includes(application.status) 
-                            ? "bg-gradient-to-br from-green-400 to-emerald-500 text-white ring-4 ring-green-500/20" 
-                            : "bg-muted/80 text-muted-foreground"
-                        )}>
-                          <DollarSignIcon className="h-5 w-5" />
-                        </div>
-                        <div className={cn(
-                          "rounded-xl p-4",
-                          ['completed', 'disbursement_processed'].includes(application.status) 
-                            ? "bg-green-500/5 border border-green-500/20" 
-                            : ""
-                        )}>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-lg">Scholarship Awarded</h3>
-                            {['completed', 'disbursement_processed'].includes(application.status) && (
-                              <Badge variant="outline" className="bg-green-500/5 text-green-500 border-green-500/20">Complete</Badge>
-                            )}
-                          </div>
-                          <p className="text-muted-foreground mt-1">
-                            {['completed', 'disbursement_processed'].includes(application.status) 
-                              ? "Congratulations! Your scholarship has been awarded and funds disbursed." 
-                              : "This is the final step in your scholarship application process."}
-                          </p>
-                        </div>
-                      </motion.div>
-                    </div>
-                  </div>
-                  
-                  {/* Animated decoration element */}
-                  <div className="relative h-24 mt-8 overflow-hidden">
-                    <div className="absolute w-full opacity-10">
-                      <svg className="w-full" viewBox="0 0 1440 100" xmlns="http://www.w3.org/2000/svg">
-                        <motion.path 
-                          initial={{ pathLength: 0 }}
-                          animate={{ pathLength: 1 }}
-                          transition={{ delay: 0.5, duration: 2, ease: "easeInOut" }}
-                          fill="none" 
-                          stroke="currentColor" 
-                          strokeWidth="4"
-                          strokeDasharray="10,20"
-                          d="M0,32L60,26.7C120,21,240,11,360,21.3C480,32,600,64,720,64C840,64,960,32,1080,21.3C1200,11,1320,21,1380,26.7L1440,32L1440,100L1380,100C1320,100,1200,100,1080,100C960,100,840,100,720,100C600,100,480,100,360,100C240,100,120,100,60,100L0,100Z"
-                        />
-                      </svg>
-                    </div>
-                  </div>
-                </motion.div>
-              </TabsContent>
-            </Tabs>
-          </motion.div>
-        </motion.div>
-      </TooltipProvider>
-    </AppLayout>
-  );
-}
-
-interface DocumentUploadFormProps {
-  applicationId: number;
-  requirementId: number;
-  isActive: boolean;
-  onActiveChange: (isActive: boolean) => void;
-  existingFileName: string | undefined;
-}
-
-function DocumentUploadForm({ 
-  applicationId, 
-  requirementId, 
-  isActive, 
-  onActiveChange,
-  existingFileName 
-}: DocumentUploadFormProps) {
-  const { data, setData, post, processing, progress } = useForm({
-    document_requirement_id: requirementId,
-    document: null as File | null,
-  });
-  
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setData('document', e.target.files[0]);
-    }
-  };
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    post(route('student.applications.documents.upload', applicationId), {
-      onSuccess: () => {
-        onActiveChange(false);
-      },
-    });
-  };
-  
-  if (!isActive) {
     return (
-      <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-        <Button 
-          variant="outline" 
-          onClick={() => onActiveChange(true)}
-          className="flex items-center gap-2 shadow-sm"
-          size="sm"
-        >
-          <ArrowUpIcon className="h-4 w-4" />
-          {existingFileName ? 'Replace Document' : 'Upload Document'}
-        </Button>
-      </motion.div>
-    );
-  }
-  
-  return (
-    <motion.div 
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-    >
-      <form onSubmit={handleSubmit} className="w-full sm:w-auto rounded-xl border border-border p-5 bg-card shadow-sm">
-        <div className="space-y-4">
-          <motion.div 
-            className="space-y-2"
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-          >
-            <Label htmlFor={`document-${requirementId}`} className="font-medium flex items-center gap-1.5">
-              <FileIcon className="h-3.5 w-3.5 text-primary" />
-              Select File to Upload
-            </Label>
-            <div className="relative mt-1.5">
-              <Input
-                id={`document-${requirementId}`}
-                type="file"
-                accept=".pdf,.jpg,.jpeg,.png"
-                onChange={handleFileChange}
-                disabled={processing}
-                required
-                className="bg-card/50 border-primary/20 cursor-pointer focus:border-primary focus:ring-1 focus:ring-primary"
-              />
+        <AppLayout breadcrumbs={breadcrumbs}>
+            <Head title="Application Details" />
+
+            <div className="min-h-screen bg-background">
+                <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
+                    {/* Hero Status Section */}
+                    <Card className="border-0 bg-gradient-to-br from-primary via-primary/95 to-primary/90 text-primary-foreground overflow-hidden">
+                        <CardContent className="p-6 lg:p-8">
+                            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className={`w-3 h-3 rounded-full ${statusInfo.bgColor} animate-pulse-subtle`}></div>
+                                        <Badge variant="secondary" className="bg-primary-foreground/20 text-primary-foreground border-primary-foreground/30">
+                                            Application #{application.id}
+                                        </Badge>
+                                    </div>
+                                    
+                                    <div>
+                                        <h1 className="text-3xl lg:text-4xl font-bold tracking-tight mb-2">
+                                            {scholarship.name}
+                                        </h1>
+                                        <p className="text-primary-foreground/80 text-lg">
+                                            {scholarship.semester} • {scholarship.academic_year}
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 bg-primary-foreground/20 rounded-lg p-3 backdrop-blur-sm">
+                                        <StatusIcon className="h-5 w-5" />
+                                        <div>
+                                            <p className="font-semibold">{formatStatus(application.status)}</p>
+                                            <p className="text-sm text-primary-foreground/80">
+                                                {getStatusDescription(application.status)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col items-center lg:items-end text-center lg:text-right space-y-4">
+                                    {/* Circular Progress */}
+                                    <div className="relative">
+                                        <div className="w-32 h-32 lg:w-40 lg:h-40">
+                                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                                <circle
+                                                    cx="50"
+                                                    cy="50"
+                                                    r="40"
+                                                    stroke="currentColor"
+                                                    strokeWidth="8"
+                                                    fill="none"
+                                                    className="text-primary-foreground/20"
+                                                />
+                                                <circle
+                                                    cx="50"
+                                                    cy="50"
+                                                    r="40"
+                                                    stroke="currentColor"
+                                                    strokeWidth="8"
+                                                    fill="none"
+                                                    strokeDasharray={`${progressPercentage * 2.51} 251`}
+                                                    className="text-primary-foreground transition-all duration-1000 ease-out-expo"
+                                                    strokeLinecap="round"
+                                                />
+                                            </svg>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                <span className="text-2xl lg:text-3xl font-bold">
+                                                    {progressPercentage}%
+                                                </span>
+                                                <span className="text-xs lg:text-sm text-primary-foreground/80">
+                                                    Complete
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="space-y-1">
+                                        <p className="text-2xl font-bold">
+                                            ${scholarship.per_student_budget.toLocaleString()}
+                                        </p>
+                                        <p className="text-primary-foreground/80">Award Amount</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="mt-6">
+                                <div className="flex justify-between text-sm mb-2">
+                                    <span>Overall Progress</span>
+                                    <span>{progressPercentage < 100 ? 'In Progress' : 'Complete'}</span>
+                                </div>
+                                <Progress 
+                                    value={progressPercentage} 
+                                    className="h-2 bg-primary-foreground/20" 
+                                    indicatorClassName="bg-primary-foreground"
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Quick Actions */}
+                    {application.status === 'enrolled' && (
+                        <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+                            <CardContent className="p-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-xl">
+                                            <Timer className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-purple-700 dark:text-purple-300">
+                                                Ready for Community Service
+                                            </h3>
+                                            <p className="text-sm text-purple-600 dark:text-purple-400">
+                                                Start tracking your {scholarship.community_service_days * 8} required hours
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button asChild className="bg-purple-600 hover:bg-purple-700">
+                                        <Link href={route('student.community-service.dashboard', { application: application.id })}>
+                                            <Rocket className="h-4 w-4 mr-2" />
+                                            Start Service
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {/* Main Content */}
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                        <TabsList className="grid w-full grid-cols-3 lg:w-fit lg:grid-cols-3">
+                            <TabsTrigger value="overview" className="flex items-center gap-2">
+                                <TrendingUp className="h-4 w-4" />
+                                <span className="hidden sm:inline">Overview</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="documents" className="flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                <span className="hidden sm:inline">Documents</span>
+                            </TabsTrigger>
+                            <TabsTrigger value="timeline" className="flex items-center gap-2">
+                                <Activity className="h-4 w-4" />
+                                <span className="hidden sm:inline">Timeline</span>
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="overview" className="space-y-6">
+                            <div className="grid lg:grid-cols-3 gap-6">
+                                {/* Scholarship Details */}
+                                <Card className="lg:col-span-2">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Award className="h-5 w-5" />
+                                            Scholarship Details
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Information about your scholarship program
+                                        </CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <DollarSign className="h-4 w-4 text-green-600" />
+                                                    <span className="text-sm font-medium text-muted-foreground">Award Amount</span>
+                                                </div>
+                                                <p className="text-2xl font-bold text-green-600">
+                                                    ${scholarship.per_student_budget.toLocaleString()}
+                                                </p>
+                                            </div>
+
+                                            {scholarship.community_service_days > 0 && (
+                                                <div className="p-4 bg-muted/50 rounded-lg">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <Clock className="h-4 w-4 text-blue-600" />
+                                                        <span className="text-sm font-medium text-muted-foreground">Service Hours</span>
+                                                    </div>
+                                                    <p className="text-2xl font-bold text-blue-600">
+                                                        {scholarship.community_service_days * 8}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <Calendar className="h-4 w-4 text-purple-600" />
+                                                    <span className="text-sm font-medium text-muted-foreground">Academic Year</span>
+                                                </div>
+                                                <p className="text-lg font-semibold">
+                                                    {scholarship.academic_year}
+                                                </p>
+                                                <p className="text-sm text-muted-foreground">
+                                                    {scholarship.semester}
+                                                </p>
+                                            </div>
+
+                                            <div className="p-4 bg-muted/50 rounded-lg">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <FileText className="h-4 w-4 text-orange-600" />
+                                                    <span className="text-sm font-medium text-muted-foreground">Application ID</span>
+                                                </div>
+                                                <p className="text-lg font-semibold">
+                                                    #{application.id}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {scholarship.description && (
+                                            <div className="p-4 bg-gradient-to-r from-primary/5 to-transparent rounded-lg border border-primary/20">
+                                                <div className="flex items-start gap-3">
+                                                    <BookOpen className="h-5 w-5 text-primary mt-0.5" />
+                                                    <div>
+                                                        <h4 className="font-medium text-primary mb-2">About This Scholarship</h4>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {scholarship.description}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+
+                                {/* Status & Next Steps */}
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <Zap className="h-5 w-5" />
+                                            Current Status
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-4">
+                                        <div className={`p-4 rounded-lg border ${
+                                            statusInfo.color === 'green' ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' :
+                                            statusInfo.color === 'red' ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' :
+                                            statusInfo.color === 'blue' ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800' :
+                                            statusInfo.color === 'purple' ? 'bg-purple-50 border-purple-200 dark:bg-purple-900/20 dark:border-purple-800' :
+                                            'bg-gray-50 border-gray-200 dark:bg-gray-900/20 dark:border-gray-800'
+                                        }`}>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <StatusIcon className={`h-5 w-5 ${
+                                                    statusInfo.color === 'green' ? 'text-green-600 dark:text-green-400' :
+                                                    statusInfo.color === 'red' ? 'text-red-600 dark:text-red-400' :
+                                                    statusInfo.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                                                    statusInfo.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
+                                                    'text-gray-600 dark:text-gray-400'
+                                                }`} />
+                                                <span className="font-semibold">{formatStatus(application.status)}</span>
+                                            </div>
+                                            <p className="text-sm text-muted-foreground">
+                                                {getStatusDescription(application.status)}
+                                            </p>
+                                        </div>
+
+                                        {/* Important Dates */}
+                                        {(application.submitted_at || application.reviewed_at) && (
+                                            <div className="space-y-3">
+                                                <Separator />
+                                                <h4 className="font-medium">Important Dates</h4>
+                                                
+                                                {application.submitted_at && (
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-full">
+                                                            <Send className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium">Submitted</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {new Date(application.submitted_at).toLocaleDateString(undefined, { 
+                                                                    year: 'numeric', month: 'long', day: 'numeric' 
+                                                                })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                                {application.reviewed_at && (
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-full">
+                                                            <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium">Reviewed</p>
+                                                            <p className="text-xs text-muted-foreground">
+                                                                {new Date(application.reviewed_at).toLocaleDateString(undefined, { 
+                                                                    year: 'numeric', month: 'long', day: 'numeric' 
+                                                                })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Admin Notes */}
+                                        {application.admin_notes && (
+                                            <div className="space-y-3">
+                                                <Separator />
+                                                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                                                    <div className="flex items-start gap-2">
+                                                        <HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Admin Notes</p>
+                                                            <p className="text-sm text-amber-600 dark:text-amber-400 mt-1">
+                                                                {application.admin_notes}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="documents" className="space-y-6">
+                            {/* Documents Header */}
+                            <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                                <CardContent className="p-6">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+                                                <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                            </div>
+                                            <div>
+                                                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                                                    Document Requirements
+                                                </h3>
+                                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                                    {documentsProgress === 100 ? 'All documents submitted!' : 
+                                                     `${approvedDocs} of ${totalDocs} documents approved`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="text-right">
+                                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                                    {Math.round(documentsProgress)}%
+                                                </p>
+                                                <p className="text-xs text-blue-500 dark:text-blue-400">Complete</p>
+                                            </div>
+                                            <div className="w-16 h-16">
+                                                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                                    <circle
+                                                        cx="50"
+                                                        cy="50"
+                                                        r="40"
+                                                        stroke="currentColor"
+                                                        strokeWidth="8"
+                                                        fill="none"
+                                                        className="text-blue-200 dark:text-blue-800"
+                                                    />
+                                                    <circle
+                                                        cx="50"
+                                                        cy="50"
+                                                        r="40"
+                                                        stroke="currentColor"
+                                                        strokeWidth="8"
+                                                        fill="none"
+                                                        strokeDasharray={`${documentsProgress * 2.51} 251`}
+                                                        className="text-blue-600 dark:text-blue-400 transition-all duration-1000"
+                                                        strokeLinecap="round"
+                                                    />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Documents Grid */}
+                            <div className="grid gap-4">
+                                {documentUploads.map(({ requirement, upload }, index) => {
+                                    const docStatusInfo = upload ? getStatusInfo(upload.status) : { color: 'gray', icon: File, variant: 'outline' as const };
+                                    const DocIcon = docStatusInfo.icon;
+
+                                    return (
+                                        <Card key={requirement.id} className="hover:shadow-md transition-all duration-300">
+                                            <CardContent className="p-6">
+                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                                    <div className="flex items-start gap-4">
+                                                        <div className="p-3 bg-muted rounded-xl flex-shrink-0">
+                                                            <FileText className="h-6 w-6 text-muted-foreground" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="font-semibold mb-1">{requirement.name}</h3>
+                                                            <p className="text-sm text-muted-foreground mb-3">
+                                                                {requirement.description}
+                                                            </p>
+                                                            
+                                                            {upload ? (
+                                                                <div className="space-y-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <DocIcon className={`h-4 w-4 ${
+                                                                            docStatusInfo.color === 'green' ? 'text-green-600' :
+                                                                            docStatusInfo.color === 'red' ? 'text-red-600' :
+                                                                            docStatusInfo.color === 'blue' ? 'text-blue-600' :
+                                                                            'text-gray-600'
+                                                                        }`} />
+                                                                        <Badge variant={docStatusInfo.variant}>
+                                                                            {formatStatus(upload.status)}
+                                                                        </Badge>
+                                                                        <span className="text-xs text-muted-foreground">
+                                                                            {new Date(upload.uploaded_at).toLocaleDateString()}
+                                                                        </span>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                        <File className="h-3 w-3" />
+                                                                        {upload.original_filename}
+                                                                    </div>
+
+                                                                    {upload.rejection_reason && (
+                                                                        <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                                                                            <div className="flex items-start gap-2">
+                                                                                <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5" />
+                                                                                <div>
+                                                                                    <p className="text-sm font-medium text-red-700 dark:text-red-300">
+                                                                                        Rejection Reason
+                                                                                    </p>
+                                                                                    <p className="text-sm text-red-600 dark:text-red-400 mt-1">
+                                                                                        {upload.rejection_reason}
+                                                                                    </p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                    <AlertTriangle className="h-4 w-4" />
+                                                                    Not uploaded yet
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Action Buttons */}
+                                                    {(application.status === 'draft' || 
+                                                      (application.status === 'documents_rejected' && upload?.status.startsWith('rejected_'))) && (
+                                                        <div className="flex gap-2">
+                                                            <Button 
+                                                                onClick={() => openUploadDialog(requirement)}
+                                                                size="sm"
+                                                                variant={upload ? "outline" : "default"}
+                                                            >
+                                                                <Upload className="h-4 w-4 mr-2" />
+                                                                {upload ? 'Replace' : 'Upload'}
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Submit Application */}
+                            {canSubmit && (
+                                <Card className="border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                                    <CardContent className="p-6">
+                                        <div className="text-center space-y-4">
+                                            <div className="flex justify-center">
+                                                <div className="p-4 bg-green-100 dark:bg-green-900/50 rounded-full">
+                                                    <CheckCircle2 className="h-8 w-8 text-green-600 dark:text-green-400" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-semibold text-green-700 dark:text-green-300 mb-2">
+                                                    Ready to Submit!
+                                                </h3>
+                                                <p className="text-green-600 dark:text-green-400 mb-4">
+                                                    All required documents have been uploaded. Review everything once more, then submit your application.
+                                                </p>
+                                            </div>
+                                            <Button 
+                                                onClick={submitApplication}
+                                                size="lg"
+                                                className="bg-green-600 hover:bg-green-700"
+                                            >
+                                                <Send className="h-5 w-5 mr-2" />
+                                                Submit Application
+                                            </Button>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </TabsContent>
+
+                        <TabsContent value="timeline" className="space-y-6">
+                            <TimelineView application={application} />
+                        </TabsContent>
+                    </Tabs>
+                </div>
+
+                {/* Upload Dialog */}
+                {selectedRequirement && (
+                    <DocumentUploadDialog
+                        open={showUploadDialog}
+                        onOpenChange={setShowUploadDialog}
+                        requirement={selectedRequirement}
+                        applicationId={application.id}
+                        existingUpload={documentUploads.find(doc => 
+                            doc.requirement.id === selectedRequirement.id
+                        )?.upload || null}
+                    />
+                )}
             </div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1.5 italic">
-              <FileIcon className="h-3 w-3 text-muted-foreground/70" />
-              Accepts PDF, JPG, JPEG, or PNG files (maximum 10MB)
-            </p>
-          </motion.div>
-          
-          {progress && (
-            <motion.div 
-              className="w-full mt-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <div className="mb-1.5 flex justify-between items-center text-xs">
-                <span className="text-primary font-medium">Uploading...</span>
-                <span className="text-muted-foreground">{Math.round(progress.percentage)}% complete</span>
-              </div>
-              <div className="w-full bg-muted/70 rounded-full h-2.5 overflow-hidden">
-                <motion.div 
-                  className="bg-primary h-full rounded-full relative overflow-hidden" 
-                  style={{ width: `${progress.percentage}%` }}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress.percentage}%` }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-foreground/30 to-transparent animate-shimmer"></div>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
-          
-          <motion.div 
-            className="flex items-center gap-3 pt-2"
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <Button 
-              type="submit" 
-              disabled={processing || !data.document}
-              className="flex items-center gap-1.5 shadow-sm"
-              size="default"
-            >
-              {processing ? (
-                <>
-                  <span className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin inline-block mr-1"></span>
-                  Uploading...
-                </>
-              ) : (
-                <>
-                  <ArrowUpIcon className="h-4 w-4" />
-                  Upload Document
-                </>
-              )}
-            </Button>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onActiveChange(false)}
-              disabled={processing}
-              size="sm"
-              className="text-sm"
-            >
-              Cancel
-            </Button>
-          </motion.div>
-        </div>
-      </form>
-    </motion.div>
-  );
+        </AppLayout>
+    );
 }
+
+// Timeline Component
+const TimelineView: React.FC<{ application: ScholarshipApplication }> = ({ application }) => {
+    const getStepStatus = (stepId: string) => {
+        const currentStatus = application.status;
+        
+        switch (stepId) {
+            case 'created':
+                return 'completed';
+            case 'submitted':
+                if (application.submitted_at) return 'completed';
+                if (currentStatus === 'draft') return 'current';
+                return 'pending';
+            case 'under_review':
+                if (['documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(currentStatus)) return 'completed';
+                if (currentStatus === 'documents_under_review') return 'current';
+                if (currentStatus.startsWith('rejected')) return 'failed';
+                return 'pending';
+            case 'approved':
+                if (['documents_approved', 'eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(currentStatus)) return 'completed';
+                if (currentStatus === 'documents_rejected') return 'failed';
+                return 'pending';
+            case 'eligibility':
+                if (['eligibility_verified', 'enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(currentStatus)) return 'completed';
+                if (currentStatus === 'documents_approved') return 'current';
+                return 'pending';
+            case 'enrolled':
+                if (['enrolled', 'service_pending', 'service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(currentStatus)) return 'completed';
+                if (currentStatus === 'eligibility_verified') return 'current';
+                return 'pending';
+            case 'service':
+                if (['service_completed', 'disbursement_pending', 'disbursement_processed', 'completed'].includes(currentStatus)) return 'completed';
+                if (['enrolled', 'service_pending'].includes(currentStatus)) return 'current';
+                return 'pending';
+            case 'disbursement':
+                if (['disbursement_processed', 'completed'].includes(currentStatus)) return 'completed';
+                if (currentStatus === 'disbursement_pending') return 'current';
+                return 'pending';
+            default:
+                return 'pending';
+        }
+    };
+
+    const timelineSteps = [
+        {
+            id: 'created',
+            title: 'Application Created',
+            description: 'Your scholarship application journey begins here.',
+            details: 'Application form initialized and ready for document uploads.',
+            date: application.created_at,
+            icon: FileText,
+            color: 'blue'
+        },
+        {
+            id: 'submitted',
+            title: 'Documents Submitted',
+            description: 'All required documents have been uploaded and submitted.',
+            details: 'Your application package is complete and ready for our review team.',
+            date: application.submitted_at,
+            icon: Upload,
+            color: 'indigo'
+        },
+        {
+            id: 'under_review',
+            title: 'Under Review',
+            description: 'Our team is carefully reviewing your submitted documents.',
+            details: 'Document verification and initial eligibility assessment in progress.',
+            date: null,
+            icon: Eye,
+            color: 'amber'
+        },
+        {
+            id: 'approved',
+            title: 'Documents Approved',
+            description: 'All your documents have been verified and approved.',
+            details: 'Great news! Your documentation meets all our requirements.',
+            date: application.reviewed_at,
+            icon: CheckCircle2,
+            color: 'green'
+        },
+        {
+            id: 'eligibility',
+            title: 'Eligibility Verified',
+            description: 'Your eligibility for the scholarship has been confirmed.',
+            details: 'Congratulations! You meet all the scholarship criteria.',
+            date: null,
+            icon: Star,
+            color: 'purple'
+        },
+        {
+            id: 'enrolled',
+            title: 'Enrollment Complete',
+            description: 'You have been officially enrolled in the scholarship program.',
+            details: 'Welcome aboard! Time to begin your community service requirement.',
+            date: null,
+            icon: Rocket,
+            color: 'pink'
+        },
+        {
+            id: 'service',
+            title: 'Community Service',
+            description: 'Complete your required community service hours.',
+            details: 'Track your progress and log your meaningful community contributions.',
+            date: null,
+            icon: Heart,
+            color: 'rose'
+        },
+        {
+            id: 'disbursement',
+            title: 'Scholarship Awarded',
+            description: 'Congratulations! Your scholarship has been disbursed.',
+            details: 'Funds have been processed and your journey is complete.',
+            date: null,
+            icon: Award,
+            color: 'emerald'
+        }
+    ];
+
+    const currentStepIndex = timelineSteps.findIndex(step => getStepStatus(step.id) === 'current');
+    const completedSteps = timelineSteps.filter(step => getStepStatus(step.id) === 'completed').length;
+    const totalSteps = timelineSteps.length;
+    const timelineProgress = (completedSteps / totalSteps) * 100;
+
+    return (
+        <div className="space-y-6">
+            {/* Timeline Header */}
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-blue-100 dark:bg-blue-900/50 rounded-xl">
+                                <Activity className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-blue-900 dark:text-blue-100">
+                                    Application Journey
+                                </h3>
+                                <p className="text-sm text-blue-700 dark:text-blue-300">
+                                    {currentStepIndex >= 0 ? `Currently at step ${currentStepIndex + 1} of ${totalSteps}` : 
+                                     `${completedSteps} of ${totalSteps} steps completed`}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <div className="text-right">
+                                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                    {Math.round(timelineProgress)}%
+                                </p>
+                                <p className="text-xs text-blue-500 dark:text-blue-400">Progress</p>
+                            </div>
+                            <div className="w-16 h-16">
+                                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <circle
+                                        cx="50"
+                                        cy="50"
+                                        r="40"
+                                        stroke="currentColor"
+                                        strokeWidth="8"
+                                        fill="none"
+                                        className="text-blue-200 dark:text-blue-800"
+                                    />
+                                    <circle
+                                        cx="50"
+                                        cy="50"
+                                        r="40"
+                                        stroke="currentColor"
+                                        strokeWidth="8"
+                                        fill="none"
+                                        strokeDasharray={`${timelineProgress * 2.51} 251`}
+                                        className="text-blue-600 dark:text-blue-400 transition-all duration-1000 ease-out-expo"
+                                        strokeLinecap="round"
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Timeline Steps */}
+            <Card>
+                <CardContent className="p-6">
+                    <div className="relative">
+                        {/* Progress Line */}
+                        <div className="absolute left-6 top-6 bottom-6 w-0.5 bg-border"></div>
+                        <div 
+                            className="absolute left-6 top-6 w-0.5 bg-gradient-to-b from-blue-500 to-purple-500 transition-all duration-1000 ease-out-expo"
+                            style={{ height: `${Math.min(timelineProgress, 100)}%` }}
+                        ></div>
+
+                        <div className="space-y-8">
+                            {timelineSteps.map((step, index) => {
+                                const status = getStepStatus(step.id);
+                                const StepIcon = step.icon;
+                                const isLast = index === timelineSteps.length - 1;
+
+                                return (
+                                    <div key={step.id} className="relative flex gap-4 group">
+                                        {/* Step Icon */}
+                                        <div className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center border-4 transition-all duration-300 ${
+                                            status === 'completed' 
+                                                ? 'bg-gradient-to-br from-green-400 to-emerald-500 border-green-200 text-white shadow-lg shadow-green-500/25' 
+                                                : status === 'current' 
+                                                    ? `bg-gradient-to-br from-${step.color}-400 to-${step.color}-500 border-${step.color}-200 text-white shadow-lg shadow-${step.color}-500/25 animate-pulse-subtle` 
+                                                    : status === 'failed' 
+                                                        ? 'bg-gradient-to-br from-red-400 to-red-500 border-red-200 text-white shadow-lg shadow-red-500/25' 
+                                                        : 'bg-muted border-border text-muted-foreground'
+                                        }`}>
+                                            <StepIcon className="h-5 w-5" />
+                                        </div>
+
+                                        {/* Step Content */}
+                                        <div className={`flex-1 pb-8 transition-all duration-300 ${
+                                            status === 'current' ? 'scale-105' : ''
+                                        }`}>
+                                            <Card className={`hover:shadow-md transition-all duration-300 ${
+                                                status === 'completed' 
+                                                    ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800' 
+                                                    : status === 'current' 
+                                                        ? `bg-${step.color}-50 border-${step.color}-200 dark:bg-${step.color}-900/20 dark:border-${step.color}-800` 
+                                                        : status === 'failed' 
+                                                            ? 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800' 
+                                                            : 'hover:bg-muted/50'
+                                            }`}>
+                                                <CardContent className="p-4">
+                                                    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <h3 className="font-semibold text-lg">{step.title}</h3>
+                                                                {status === 'completed' && (
+                                                                    <Badge className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/50 dark:text-green-300">
+                                                                        <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                                        Complete
+                                                                    </Badge>
+                                                                )}
+                                                                {status === 'current' && (
+                                                                    <Badge className={`bg-${step.color}-100 text-${step.color}-700 border-${step.color}-300 dark:bg-${step.color}-900/50 dark:text-${step.color}-300`}>
+                                                                        <Clock className="h-3 w-3 mr-1" />
+                                                                        Current
+                                                                    </Badge>
+                                                                )}
+                                                                {status === 'failed' && (
+                                                                    <Badge variant="destructive">
+                                                                        <AlertTriangle className="h-3 w-3 mr-1" />
+                                                                        Action Needed
+                                                                    </Badge>
+                                                                )}
+                                                                {status === 'pending' && (
+                                                                    <Badge variant="outline">
+                                                                        Upcoming
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <p className="text-muted-foreground mb-2">
+                                                                {step.description}
+                                                            </p>
+                                                            <p className="text-sm text-muted-foreground/80">
+                                                                {step.details}
+                                                            </p>
+                                                        </div>
+
+                                                        {step.date && (
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background/50 rounded-lg p-2">
+                                                                <Calendar className="h-4 w-4" />
+                                                                <div className="text-right">
+                                                                    <p className="font-medium">
+                                                                        {new Date(step.date).toLocaleDateString(undefined, {
+                                                                            month: 'short',
+                                                                            day: 'numeric'
+                                                                        })}
+                                                                    </p>
+                                                                    <p className="text-xs">
+                                                                        {new Date(step.date).getFullYear()}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Special action for current step */}
+                                                    {status === 'current' && step.id === 'service' && (
+                                                        <div className="mt-4 pt-3 border-t border-border">
+                                                            <Button asChild size="sm" className="w-full sm:w-auto">
+                                                                <Link href={route('student.community-service.dashboard', { application: application.id })}>
+                                                                    <Timer className="h-4 w-4 mr-2" />
+                                                                    Start Community Service
+                                                                </Link>
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Timeline Summary */}
+            <Card className="bg-gradient-to-r from-primary/5 to-transparent border-primary/20">
+                <CardContent className="p-6">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg mt-0.5">
+                            <Info className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <h4 className="font-medium text-primary mb-2">Timeline Overview</h4>
+                            <p className="text-sm text-muted-foreground">
+                                This timeline shows your complete scholarship application journey. Each step represents 
+                                a milestone in the process, from initial application to final award disbursement. 
+                                You can track your progress and see what comes next at each stage.
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+// Document Upload Dialog
+const DocumentUploadDialog: React.FC<{
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    requirement: DocumentRequirement;
+    applicationId: number;
+    existingUpload: DocumentUpload | null;
+}> = ({ open, onOpenChange, requirement, applicationId, existingUpload }) => {
+    const { data, setData, post, processing, progress, reset } = useForm({
+        document_requirement_id: requirement.id,
+        document: null as File | null,
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        post(route('student.applications.documents.upload', applicationId), {
+            onSuccess: () => {
+                toast.success('Document uploaded successfully!');
+                onOpenChange(false);
+                reset();
+            },
+            onError: () => {
+                toast.error('Failed to upload document. Please try again.');
+            }
+        });
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Upload className="h-5 w-5" />
+                        {existingUpload ? 'Replace Document' : 'Upload Document'}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {requirement.name}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                    <div className="p-3 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground">
+                            {requirement.description}
+                        </p>
+                    </div>
+
+                    {existingUpload && (
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                            <div className="flex items-center gap-2 mb-1">
+                                <File className="h-4 w-4 text-blue-600" />
+                                <span className="text-sm font-medium">Current File</span>
+                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                {existingUpload.original_filename}
+                            </p>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                        <div>
+                            <Label htmlFor="document">Select New File</Label>
+                            <Input
+                                id="document"
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                onChange={e => setData('document', e.target.files?.[0] || null)}
+                                disabled={processing}
+                                required
+                                className="mt-1"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Accepts PDF, JPG, JPEG, or PNG files (max 10MB)
+                            </p>
+                        </div>
+
+                        {progress && progress.percentage !== undefined && (
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span>Uploading...</span>
+                                    <span>{Math.round(progress.percentage)}%</span>
+                                </div>
+                                <Progress value={progress.percentage} className="h-2" />
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 pt-2">
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                onClick={() => onOpenChange(false)}
+                                disabled={processing}
+                                className="flex-1"
+                            >
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                disabled={processing || !data.document}
+                                className="flex-1"
+                            >
+                                {processing ? 'Uploading...' : 'Upload'}
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};

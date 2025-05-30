@@ -11,17 +11,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property int $id
  * @property int $scholarship_application_id
- * @property string $description
- * @property int $days_completed
+ * @property \Illuminate\Support\Carbon $service_date
+ * @property string $time_in
+ * @property string|null $time_out
+ * @property string $task_description
+ * @property string|null $lessons_learned
+ * @property array|null $photos
+ * @property float $hours_completed
  * @property string $status
- * @property string|null $rejection_reason
- * @property \Illuminate\Support\Carbon $submitted_at
- * @property \Illuminate\Support\Carbon|null $reviewed_at
+ * @property string|null $admin_notes
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read \App\Models\ScholarshipApplication $scholarshipApplication
  */
-final class CommunityServiceReport extends Model
+final class CommunityServiceEntry extends Model
 {
     use HasFactory;
     
@@ -32,15 +35,15 @@ final class CommunityServiceReport extends Model
      */
     protected $fillable = [
         'scholarship_application_id',
-        'description',
-        'pdf_report_path',
-        'report_type',
-        'days_completed',
-        'total_hours',
+        'service_date',
+        'time_in',
+        'time_out',
+        'task_description',
+        'lessons_learned',
+        'photos',
+        'hours_completed',
         'status',
-        'rejection_reason',
-        'submitted_at',
-        'reviewed_at',
+        'admin_notes',
     ];
     
     /**
@@ -51,15 +54,14 @@ final class CommunityServiceReport extends Model
     protected function casts(): array
     {
         return [
-            'days_completed' => 'integer',
-            'total_hours' => 'decimal:2',
-            'submitted_at' => 'datetime',
-            'reviewed_at' => 'datetime',
+            'service_date' => 'date:Y-m-d',
+            'photos' => 'array',
+            'hours_completed' => 'decimal:2',
         ];
     }
     
     /**
-     * Get the scholarship application that owns the community service report.
+     * Get the scholarship application that owns the community service entry.
      */
     public function scholarshipApplication(): BelongsTo
     {

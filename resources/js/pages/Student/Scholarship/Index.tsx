@@ -13,7 +13,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CalendarIcon, FileTextIcon, ClockIcon, CheckCircleIcon, AlertCircleIcon, 
          DollarSignIcon, SearchIcon, BookOpenIcon, AwardIcon, GraduationCapIcon, 
-         ChevronRightIcon, StarIcon, School2Icon, FilterIcon, UsersIcon } from 'lucide-react';
+         ChevronRightIcon, StarIcon, School2Icon, FilterIcon, UsersIcon, TimerIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ScholarshipIndexProps {
@@ -283,10 +283,10 @@ export default function Index({ scholarships, existingApplicationIds, hasProfile
                           </div>
                           
                           <div className="flex items-start gap-1.5">
-                            <BookOpenIcon className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                            <TimerIcon className="h-4 w-4 text-purple-500 flex-shrink-0 mt-0.5" />
                             <div>
-                              <div className="text-xs text-muted-foreground">Service Days</div>
-                              <div className="font-medium">{scholarship.community_service_days} days</div>
+                              <div className="text-xs text-muted-foreground">Required Service</div>
+                              <div className="font-medium">{scholarship.community_service_days * 8} hours</div>
                             </div>
                           </div>
                         </div>

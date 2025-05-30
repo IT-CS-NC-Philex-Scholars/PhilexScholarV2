@@ -95,4 +95,12 @@ final class ScholarshipApplication extends Model
     {
         return $this->hasMany(Disbursement::class);
     }
+    
+    /**
+     * Get the community service entries for the scholarship application.
+     */
+    public function communityServiceEntries(): HasMany
+    {
+        return $this->hasMany(CommunityServiceEntry::class);
+    }
 }

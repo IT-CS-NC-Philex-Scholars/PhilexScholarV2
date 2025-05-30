@@ -1,0 +1,576 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\CommunityServiceReport;
+use App\Models\CommunityServiceEntry;
+use App\Models\ScholarshipApplication;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
+use Inertia\Response;
+
+final class CommunityServiceController extends Controller
+{
+    /**
+     * Display the community service dashboard with overview statistics.
+     */
+    public function dashboard(): Response
+    {
+        // Quick stats for dashboard cards
+        $quickStats = [
+            'pending_review' => CommunityServiceReport::where('status', 'pending_review')->count(),
+            'approved_today' => CommunityServiceReport::where('status', 'approved')
+                ->whereDate('reviewed_at', today())->count(),
+            'total_hours_this_month' => CommunityServiceReport::where('status', 'approved')
+                ->where('reviewed_at', '>=', now()->startOfMonth())->sum('total_hours'),
+            'active_sessions' => CommunityServiceEntry::where('status', 'in_progress')->count(),
+        ];
+
+        // Recent urgent items (pending > 3 days)
+        $urgentReports = CommunityServiceReport::with([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram'
+        ])
+        ->where('status', 'pending_review')
+        ->where('submitted_at', '<=', now()->subDays(3))
+        ->latest('submitted_at')
+        ->limit(5)
+        ->get();
+
+        // Performance metrics
+        $performanceMetrics = [
+            'avg_review_time_hours' => $this->getAverageReviewTime(),
+            'approval_rate' => $this->getApprovalRate(),
+            'monthly_submissions' => $this->getMonthlySubmissions(),
+        ];
+
+        return Inertia::render('Admin/CommunityService/Dashboard', [
+            'quickStats' => $quickStats,
+            'urgentReports' => $urgentReports,
+            'performanceMetrics' => $performanceMetrics,
+        ]);
+    }
+
+    /**
+     * Display a listing of community service submissions for admin review.
+     */
+    public function index(Request $request): Response
+    {
+        $query = CommunityServiceReport::with([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram'
+        ]);
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by report type
+        if ($request->filled('report_type')) {
+            $query->where('report_type', $request->report_type);
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->where('submitted_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->where('submitted_at', '<=', $request->date_to . ' 23:59:59');
+        }
+
+        // Filter by scholarship program
+        if ($request->filled('scholarship_program')) {
+            $query->whereHas('scholarshipApplication.scholarshipProgram', function ($q) use ($request) {
+                $q->where('id', $request->scholarship_program);
+            });
+        }
+
+        // Search by student name or scholarship
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('scholarshipApplication.studentProfile.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })->orWhereHas('scholarshipApplication.scholarshipProgram', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        // Sort order
+        $sortBy = $request->get('sort', 'submitted_at');
+        $sortDirection = $request->get('direction', 'desc');
+        $query->orderBy($sortBy, $sortDirection);
+
+        $reports = $query->paginate(20);
+
+        // Enhanced statistics with trends
+        $stats = [
+            'pending_review' => CommunityServiceReport::where('status', 'pending_review')->count(),
+            'approved' => CommunityServiceReport::where('status', 'approved')->count(),
+            'rejected' => CommunityServiceReport::whereIn('status', [
+                'rejected_insufficient_hours', 
+                'rejected_incomplete_documentation', 
+                'rejected_other'
+            ])->count(),
+            'total' => CommunityServiceReport::count(),
+            'total_hours_approved' => CommunityServiceReport::where('status', 'approved')->sum('total_hours'),
+            'total_days_approved' => CommunityServiceReport::where('status', 'approved')->sum('days_completed'),
+            'this_week' => CommunityServiceReport::where('submitted_at', '>=', now()->startOfWeek())->count(),
+            'this_month' => CommunityServiceReport::where('submitted_at', '>=', now()->startOfMonth())->count(),
+            'avg_processing_time' => $this->getAverageReviewTime(),
+        ];
+
+        // Recent activity (last 24 hours)
+        $recentActivity = CommunityServiceReport::with([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram'
+        ])
+        ->where('submitted_at', '>=', now()->subDay())
+        ->latest('submitted_at')
+        ->limit(10)
+        ->get();
+
+        // Scholarship programs for filter dropdown
+        $scholarshipPrograms = \App\Models\ScholarshipProgram::select('id', 'name')
+            ->whereIn('id', function($query) {
+                $query->select('scholarship_program_id')
+                    ->from('scholarship_applications')
+                    ->whereIn('id', function($subQuery) {
+                        $subQuery->select('scholarship_application_id')
+                            ->from('community_service_reports')
+                            ->distinct();
+                    });
+            })
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Admin/CommunityService/Index', [
+            'reports' => $reports,
+            'stats' => $stats,
+            'recentActivity' => $recentActivity,
+            'scholarshipPrograms' => $scholarshipPrograms,
+            'filters' => $request->only(['status', 'report_type', 'search', 'date_from', 'date_to', 'scholarship_program', 'sort', 'direction']),
+        ]);
+    }
+
+    /**
+     * Display detailed view of a community service report for admin review.
+     */
+    public function show(CommunityServiceReport $report): Response
+    {
+        $report->load([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram',
+            'scholarshipApplication.communityServiceEntries' => function ($query) {
+                $query->orderBy('service_date', 'desc')->orderBy('time_in', 'desc');
+            }
+        ]);
+
+        // Comment out the temporary debugging lines
+        // if (!$report->relationLoaded('scholarshipApplication')) {
+        //     abort(500, 'ScholarshipApplication relation was not loaded.');
+        // }
+        // if ($report->scholarshipApplication === null) {
+        //     abort(500, \'ScholarshipApplication is null even after loading. Check foreign key and data integrity for report ID: \' . $report->id);
+        // }
+ 
+        $entries = [];
+        $reportData = $report->toArray(); // Base report attributes
+
+        if ($report->scholarshipApplication) {
+            $scholarshipApplicationData = $report->scholarshipApplication->toArray(); // Base application attributes
+
+            // Explicitly add loaded studentProfile if it exists and is loaded
+            if ($report->scholarshipApplication->relationLoaded('studentProfile') && $report->scholarshipApplication->studentProfile) {
+                $scholarshipApplicationData['studentProfile'] = $report->scholarshipApplication->studentProfile->toArray();
+                // If studentProfile itself has a 'user' relation loaded and needed:
+                if ($report->scholarshipApplication->studentProfile->relationLoaded('user') && $report->scholarshipApplication->studentProfile->user) {
+                    $scholarshipApplicationData['studentProfile']['user'] = $report->scholarshipApplication->studentProfile->user->toArray();
+                }
+            } else {
+                $scholarshipApplicationData['studentProfile'] = null; // Or handle as an error / default
+            }
+
+            // Explicitly add loaded scholarshipProgram if it exists and is loaded
+            if ($report->scholarshipApplication->relationLoaded('scholarshipProgram') && $report->scholarshipApplication->scholarshipProgram) {
+                $scholarshipApplicationData['scholarshipProgram'] = $report->scholarshipApplication->scholarshipProgram->toArray();
+            } else {
+                $scholarshipApplicationData['scholarshipProgram'] = null; // Or handle as an error / default
+            }
+            
+            $reportData['scholarshipApplication'] = $scholarshipApplicationData;
+
+            // Populate entries if scholarshipApplication and its entries exist
+            if ($report->scholarshipApplication->relationLoaded('communityServiceEntries')) {
+                $entries = $report->scholarshipApplication->communityServiceEntries 
+                    ? $report->scholarshipApplication->communityServiceEntries->toArray() 
+                    : [];
+            }
+
+        } else {
+            $reportData['scholarshipApplication'] = null; 
+        }
+
+        return Inertia::render('Admin/CommunityService/Show', [
+            'report' => $reportData,
+            'entries' => $entries,
+        ]);
+    }
+
+    /**
+     * Display community service entries index for admin review.
+     */
+    public function entries(Request $request): Response
+    {
+        $query = CommunityServiceEntry::with([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram'
+        ]);
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Search by student name
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('scholarshipApplication.studentProfile.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $entries = $query->latest('service_date')->paginate(15);
+
+        // Get entry statistics
+        $entryStats = [
+            'in_progress' => CommunityServiceEntry::where('status', 'in_progress')->count(),
+            'completed' => CommunityServiceEntry::where('status', 'completed')->count(),
+            'approved' => CommunityServiceEntry::where('status', 'approved')->count(),
+            'rejected' => CommunityServiceEntry::where('status', 'rejected')->count(),
+            'total' => CommunityServiceEntry::count(),
+            'total_hours' => CommunityServiceEntry::where('status', 'approved')->sum('hours_completed'),
+        ];
+
+        return Inertia::render('Admin/CommunityService/Entries', [
+            'entries' => $entries,
+            'stats' => $entryStats,
+            'filters' => $request->only(['status', 'search']),
+        ]);
+    }
+
+    /**
+     * Show detailed view of a community service entry.
+     */
+    public function showEntry(CommunityServiceEntry $entry): Response
+    {
+        $entry->load([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram'
+        ]);
+
+        return Inertia::render('Admin/CommunityService/EntryShow', [
+            'entry' => $entry,
+            'application' => $entry->scholarshipApplication,
+        ]);
+    }
+
+    /**
+     * Update the status of a community service report.
+     */
+    public function updateReportStatus(Request $request, CommunityServiceReport $report): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:approved,rejected_insufficient_hours,rejected_incomplete_documentation,rejected_other'],
+            'rejection_reason' => ['required_if:status,rejected_insufficient_hours,rejected_incomplete_documentation,rejected_other', 'string', 'max:500'],
+        ]);
+
+        $report->update([
+            'status' => $validated['status'],
+            'rejection_reason' => $validated['rejection_reason'] ?? null,
+            'reviewed_at' => now(),
+        ]);
+
+        // Update application status based on report approval
+        if ($validated['status'] === 'approved') {
+            $this->checkAndUpdateApplicationStatus($report->scholarshipApplication);
+        }
+
+        $message = $validated['status'] === 'approved' 
+            ? 'Community service report approved successfully.'
+            : 'Community service report rejected.';
+
+        return Redirect::back()->with('success', $message);
+    }
+
+    /**
+     * Update the status of a community service entry.
+     */
+    public function updateEntryStatus(Request $request, CommunityServiceEntry $entry): RedirectResponse
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:approved,rejected'],
+            'admin_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $entry->update([
+            'status' => $validated['status'],
+            'admin_notes' => $validated['admin_notes'] ?? null,
+        ]);
+
+        $message = $validated['status'] === 'approved' 
+            ? 'Community service entry approved successfully.'
+            : 'Community service entry rejected.';
+
+        return Redirect::back()->with('success', $message);
+    }
+
+    /**
+     * Bulk approve/reject multiple reports.
+     */
+    public function bulkUpdateReports(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'report_ids' => ['required', 'array'],
+            'report_ids.*' => ['integer', 'exists:community_service_reports,id'],
+            'action' => ['required', 'in:approve,reject'],
+            'rejection_reason' => ['required_if:action,reject', 'string', 'max:500'],
+        ]);
+
+        $status = $validated['action'] === 'approve' ? 'approved' : 'rejected_other';
+        
+        CommunityServiceReport::whereIn('id', $validated['report_ids'])
+            ->update([
+                'status' => $status,
+                'rejection_reason' => $validated['rejection_reason'] ?? null,
+                'reviewed_at' => now(),
+            ]);
+
+        // Update application statuses for approved reports
+        if ($validated['action'] === 'approve') {
+            $reports = CommunityServiceReport::whereIn('id', $validated['report_ids'])->get();
+            foreach ($reports as $report) {
+                $this->checkAndUpdateApplicationStatus($report->scholarshipApplication);
+            }
+        }
+
+        $count = count($validated['report_ids']);
+        $message = $validated['action'] === 'approve' 
+            ? "Successfully approved {$count} community service reports."
+            : "Successfully rejected {$count} community service reports.";
+
+        return Redirect::back()->with('success', $message);
+    }
+
+    /**
+     * Download PDF report.
+     */
+    public function downloadPdf(CommunityServiceReport $report)
+    {
+        if (!$report->pdf_report_path || !Storage::disk('local')->exists($report->pdf_report_path)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download($report->pdf_report_path, 
+            "community_service_report_{$report->id}.pdf");
+    }
+
+    /**
+     * Download photo from service entry.
+     */
+    public function downloadPhoto(CommunityServiceEntry $entry, string $photoPath)
+    {
+        if (!in_array($photoPath, $entry->photos ?? []) || !Storage::disk('local')->exists($photoPath)) {
+            abort(404);
+        }
+
+        return Storage::disk('local')->download($photoPath);
+    }
+
+    /**
+     * Check if all community service requirements are met and update application status.
+     */
+    private function checkAndUpdateApplicationStatus(ScholarshipApplication $application): void
+    {
+        $requiredDays = $application->scholarshipProgram->community_service_days;
+        $approvedDays = $application->communityServiceReports()
+            ->where('status', 'approved')
+            ->sum('days_completed');
+
+        if ($approvedDays >= $requiredDays) {
+            $application->update(['status' => 'service_completed']);
+        }
+    }
+
+    /**
+     * Export community service data.
+     */
+    public function export(Request $request)
+    {
+        $query = CommunityServiceReport::with([
+            'scholarshipApplication.studentProfile.user',
+            'scholarshipApplication.scholarshipProgram'
+        ]);
+
+        // Apply same filters as index
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('report_type')) {
+            $query->where('report_type', $request->report_type);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('scholarshipApplication.studentProfile.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $reports = $query->latest('submitted_at')->get();
+
+        // Create CSV content
+        $csvData = "Student Name,Email,Scholarship Program,Report Type,Days Completed,Total Hours,Status,Submitted At,Reviewed At\n";
+        
+        foreach ($reports as $report) {
+            $student = $report->scholarshipApplication->studentProfile->user;
+            $scholarship = $report->scholarshipApplication->scholarshipProgram;
+            
+            $csvData .= sprintf(
+                "%s,%s,%s,%s,%d,%.2f,%s,%s,%s\n",
+                $student->name,
+                $student->email,
+                $scholarship->name,
+                ucfirst(str_replace('_', ' ', $report->report_type)),
+                $report->days_completed,
+                $report->total_hours,
+                ucfirst(str_replace('_', ' ', $report->status)),
+                $report->submitted_at->format('Y-m-d H:i:s'),
+                $report->reviewed_at ? $report->reviewed_at->format('Y-m-d H:i:s') : 'Not reviewed'
+            );
+        }
+
+        return response($csvData)
+            ->header('Content-Type', 'text/csv')
+            ->header('Content-Disposition', 'attachment; filename="community_service_reports_' . date('Y-m-d') . '.csv"');
+    }
+
+    /**
+     * Calculate approval rate for performance metrics.
+     */
+    private function getApprovalRate(): float
+    {
+        $total = CommunityServiceReport::whereNotNull('reviewed_at')
+            ->where('reviewed_at', '>=', now()->subMonth())
+            ->count();
+            
+        if ($total === 0) return 0;
+        
+        $approved = CommunityServiceReport::where('status', 'approved')
+            ->where('reviewed_at', '>=', now()->subMonth())
+            ->count();
+            
+        return round(($approved / $total) * 100, 1);
+    }
+
+    /**
+     * Get monthly submission data for charts.
+     */
+    private function getMonthlySubmissions(): array
+    {
+        $months = [];
+        for ($i = 11; $i >= 0; $i--) {
+            $date = now()->subMonths($i);
+            $months[] = [
+                'month' => $date->format('M Y'),
+                'count' => CommunityServiceReport::whereYear('submitted_at', $date->year)
+                    ->whereMonth('submitted_at', $date->month)
+                    ->count(),
+                'approved' => CommunityServiceReport::where('status', 'approved')
+                    ->whereYear('submitted_at', $date->year)
+                    ->whereMonth('submitted_at', $date->month)
+                    ->count(),
+            ];
+        }
+        return $months;
+    }
+
+    /**
+     * Calculate average review time in hours (compatible with both MySQL and SQLite).
+     */
+    private function getAverageReviewTime(): float
+    {
+        $reports = CommunityServiceReport::whereNotNull('reviewed_at')
+            ->where('reviewed_at', '>=', now()->subMonth())
+            ->select(['submitted_at', 'reviewed_at'])
+            ->get();
+
+        if ($reports->isEmpty()) {
+            return 0;
+        }
+
+        $totalHours = 0;
+        foreach ($reports as $report) {
+            $submittedAt = \Carbon\Carbon::parse($report->submitted_at);
+            $reviewedAt = \Carbon\Carbon::parse($report->reviewed_at);
+            $totalHours += $reviewedAt->diffInHours($submittedAt);
+        }
+
+        return round($totalHours / $reports->count(), 1);
+    }
+
+    /**
+     * Delete a community service entry (service session).
+     *
+     * @param  CommunityServiceEntry  $entry
+     * @return RedirectResponse
+     */
+    public function destroyEntry(CommunityServiceEntry $entry): RedirectResponse
+    {
+        // Optionally, you can add authorization here (e.g., Gate::authorize('delete', $entry));
+        $entry->delete();
+        return Redirect::back()->with('success', 'Community service entry deleted successfully.');
+    }
+
+    /**
+     * Undo approval of a community service entry (set status back to completed).
+     *
+     * @param  CommunityServiceEntry  $entry
+     * @return RedirectResponse
+     */
+    public function undoEntryApproval(CommunityServiceEntry $entry): RedirectResponse
+    {
+        // Optionally, add authorization here
+        $entry->update([
+            'status' => 'completed',
+            'admin_notes' => null,
+        ]);
+        return Redirect::back()->with('success', 'Entry approval has been undone.');
+    }
+
+    /**
+     * Get the total approved hours for a community service report (from DB).
+     *
+     * @param CommunityServiceReport $report
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function getApprovedHours(CommunityServiceReport $report)
+    {
+        $approvedHours = $report->scholarshipApplication
+            ? $report->scholarshipApplication->communityServiceEntries()
+                ->where('status', 'approved')
+                ->sum('hours_completed')
+            : 0;
+        return response()->json(['approved_hours' => round($approvedHours, 2)]);
+    }
+}

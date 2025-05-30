@@ -66,10 +66,13 @@ export interface ScholarshipApplication {
   admin_notes: string | null;
   submitted_at: string | null;
   reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
   scholarshipProgram?: ScholarshipProgram;
   studentProfile?: StudentProfile & { user?: User };
   documentUploads?: DocumentUpload[];
   communityServiceReports?: CommunityServiceReport[];
+  communityServiceEntries?: CommunityServiceEntry[];
   disbursements?: Disbursement[];
 }
 
@@ -89,15 +92,33 @@ export interface DocumentUpload {
 export interface CommunityServiceReport {
   id: number;
   scholarship_application_id: number;
-  organization_name: string;
   description: string;
-  hours: number;
-  service_date: string;
-  verification_document: string | null;
+  pdf_report_path: string | null;
+  report_type: 'tracked' | 'pdf_upload';
+  days_completed: number;
+  total_hours: number;
   status: string;
   rejection_reason: string | null;
-  created_at: string;
+  submitted_at: string;
   reviewed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommunityServiceEntry {
+  id: number;
+  scholarship_application_id: number;
+  service_date: string;
+  time_in: string;
+  time_out: string | null;
+  task_description: string;
+  lessons_learned: string | null;
+  photos: string[] | null;
+  hours_completed: number;
+  status: 'in_progress' | 'completed' | 'approved' | 'rejected';
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Disbursement {

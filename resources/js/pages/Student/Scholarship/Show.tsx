@@ -157,7 +157,7 @@ export default function Show({
                 
                 <div>
                   <h3 className="font-medium text-muted-foreground">Community Service Requirement</h3>
-                  <p className="text-lg font-semibold">{scholarship.community_service_days} days</p>
+                  <p className="text-lg font-semibold">{scholarship.community_service_days * 8} hours</p>
                 </div>
               </div>
             </div>

@@ -4,22 +4,29 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import { initializeTheme } from './hooks/use-appearance';
-import { configureEcho } from '@laravel/echo-react';
-
-configureEcho({
-    broadcaster: 'reverb',
-    key: import.meta.env.VITE_REVERB_APP_KEY,
-    wsHost: import.meta.env.VITE_REVERB_HOST ?? 'localhost',
-    wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-    wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
-    enabledTransports: ['ws', 'wss'],
-    enableStats: false,
-    enableLogging: true,
-});
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
 // Initialize theme before anything else
 initializeTheme();
+
+(window as any).Pusher = Pusher;
+
+(window as any).Echo = new Echo({
+    broadcaster: 'reverb',
+    key: import.meta.env.VITE_REVERB_APP_KEY,
+    wsHost: import.meta.env.VITE_REVERB_HOST ?? window.location.hostname,
+    wsPort: parseInt(import.meta.env.VITE_REVERB_PORT ?? '8080', 10),
+    wssPort: parseInt(import.meta.env.VITE_REVERB_PORT ?? '8080', 10),
+    forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
+    enabledTransports: ['ws', 'wss'],
+    // If you had specific Reverb options like `authorizer` or `authEndpoint`
+    // that differ from Echo defaults, you might need to add them here.
+    // For basic Reverb, this should be okay.
+    // `enableLogging: true` can be useful for Echo's own logs during development:
+    // logToConsole: true, // Older Echo versions
+    // enableLogging: true, // Newer Echo versions might have this directly or via connector options
+});
 
 // Wrap in a try-catch to debug JSON parsing errors
 try {

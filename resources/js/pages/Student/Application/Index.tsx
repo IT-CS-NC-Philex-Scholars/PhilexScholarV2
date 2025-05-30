@@ -11,7 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CalendarIcon, FileTextIcon, ClockIcon, CheckCircleIcon, AlertCircleIcon, 
          ArrowUpIcon, DollarSignIcon, SearchIcon, BookOpenIcon, AwardIcon, 
-         XCircleIcon, ChevronRightIcon, InfoIcon } from 'lucide-react';
+         XCircleIcon, ChevronRightIcon, InfoIcon, TimerIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Individual application card component
@@ -76,6 +76,20 @@ const ApplicationCard = ({
                       {formatStatus(application.status)}
                     </Badge>
                   </div>
+
+                  {application.scholarshipProgram?.community_service_days && application.scholarshipProgram.community_service_days > 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-1.5 sm:px-2 py-0.5 rounded-full bg-muted/50 border border-border">
+                          <TimerIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          {application.scholarshipProgram.community_service_days * 8} hours service
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Required Community Service</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
                   
                   {application.submitted_at && (
                     <TooltipProvider>

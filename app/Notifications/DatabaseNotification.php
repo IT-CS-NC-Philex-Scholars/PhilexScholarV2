@@ -49,7 +49,7 @@ class DatabaseNotification extends Notification implements ShouldBroadcast, Shou
     public function broadcastOn(): array
     {
         return [
-            new \Illuminate\Broadcasting\Channel('notifications'),
+            new \Illuminate\Broadcasting\PrivateChannel('notifications'),
         ];
     }
 

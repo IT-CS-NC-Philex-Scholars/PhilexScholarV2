@@ -4,7 +4,7 @@ import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 import { type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, FileText, Award, User, Users, Settings, Home } from 'lucide-react';
+import { BookOpen, Folder, LayoutGrid, FileText, Award, User, Users, Settings, Home, Timer, CheckCircle } from 'lucide-react';
 import AppLogo from './app-logo';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,11 @@ const studentNavItems: NavItem[] = [
         title: 'My Applications',
         href: route('student.applications.index'),
         icon: FileText,
+    },
+    {
+        title: 'Community Service',
+        href: '#', // Will be dynamically set based on active application
+        icon: Timer,
     },
     {
         title: 'My Profile',
@@ -49,6 +54,11 @@ const adminNavItems: NavItem[] = [
         title: 'Applications',
         href: route('admin.applications.index'),
         icon: FileText,
+    },
+    {
+        title: 'Community Service',
+        href: route('admin.community-service.index'),
+        icon: CheckCircle,
     },
     {
         title: 'Students',
@@ -76,8 +86,14 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const { auth } = usePage().props as any;
-    const user = auth?.user;
+    const page = usePage();
+    const pageProps = page.props as {
+        auth?: { user?: { role?: string; [key: string]: any } };
+        application?: { id?: string | number; [key: string]: any }; // For current application context
+        [key: string]: any;
+    };
+    const user = pageProps.auth?.user;
+    const currentApplication = pageProps.application; // Store for use in nav item logic
     
     // Animation state for showing the nav
     const [isLoaded, setIsLoaded] = useState(false);
@@ -96,13 +112,34 @@ export function AppSidebar() {
             setActiveTab('scholarships');
         } else if (pathname.includes('/applications')) {
             setActiveTab('applications');
+        } else if (pathname.includes('/community-service')) {
+            setActiveTab('community service');
         } else if (pathname.includes('/profile')) {
             setActiveTab('profile');
         }
     }, []);
     
     // Determine which navigation items to use based on user role
-    const navItems = user?.role === 'admin' ? adminNavItems : studentNavItems;
+    let navItems: NavItem[];
+
+    if (user?.role === 'admin') {
+        navItems = adminNavItems;
+    } else {
+        // Student navigation: Make a deep copy to allow modification for dynamic links
+        navItems = studentNavItems.map(item => ({ ...item })); 
+        const communityServiceItem = navItems.find(item => item.title === 'Community Service');
+        
+        if (communityServiceItem) {
+            // If a specific application context (e.g., viewing an application or its CS dashboard)
+            // is available via pageProps.application, link "Community Service" to that specific application.
+            // Otherwise, link to the "My Applications" page, so the student can select one.
+            if (currentApplication && typeof currentApplication.id !== 'undefined' && String(currentApplication.id).trim().length > 0) {
+                communityServiceItem.href = route('student.community-service.create', currentApplication.id);
+            } else {
+                communityServiceItem.href = route('student.applications.index');
+            }
+        }
+    }
     
     // Get dashboard link based on user role
     const dashboardLink = user?.role === 'admin' ? route('admin.dashboard') : route('student.dashboard');

@@ -30,7 +30,8 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^3.7",
-        "pestphp/pest-plugin-type-coverage": "^3.4"
+        "pestphp/pest-plugin-type-coverage": "^3.4",
+        "soloterm/solo": "^0.5.0"
     },
     "autoload": {
         "psr-4": {

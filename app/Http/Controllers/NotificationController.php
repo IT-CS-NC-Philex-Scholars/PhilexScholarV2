@@ -37,10 +37,10 @@ class NotificationController extends Controller
 
         if ($notification) {
             $notification->markAsRead();
+            return back()->with('success', 'Notification marked as read.');
         }
 
-        return back()->with('success', 'Notification marked as read.');
-
+        return back()->with('error', 'Notification not found.');
     }
 
     public function markAllAsRead(Request $request)
@@ -48,7 +48,6 @@ class NotificationController extends Controller
         $request->user()->unreadNotifications->markAsRead();
 
         return back()->with('success', 'All notifications marked as read.');
-
     }
 
     public function delete(Request $request, $id)

@@ -100,7 +100,19 @@ final class ApplicationController extends Controller
         }
 
         if (isset($data['community_service_reports'])) {
-            $data['communityServiceReports'] = $data['community_service_reports'];
+            $data['communityServiceReports'] = array_map(function ($report) {
+                // If tracked, load entries
+                if ($report['report_type'] === 'tracked') {
+                    $entries = \App\Models\CommunityServiceEntry::where('scholarship_application_id', $report['scholarship_application_id'])
+                        ->orderBy('service_date', 'desc')
+                        ->orderBy('time_in', 'desc')
+                        ->get();
+                    $report['entries'] = $entries->toArray();
+                } else {
+                    $report['entries'] = [];
+                }
+                return $report;
+            }, $data['community_service_reports']);
             unset($data['community_service_reports']);
         } else {
             $data['communityServiceReports'] = [];

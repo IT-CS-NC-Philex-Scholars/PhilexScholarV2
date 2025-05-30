@@ -20,7 +20,7 @@ import { cn } from '@/lib/utils';
 import {
     ScholarshipApplication as ApplicationType,
     BreadcrumbItem,
-    CommunityServiceReport as CommunityServiceReportType,
+    CommunityServiceReport as CommunityServiceReportTypeBase,
     Disbursement as DisbursementType,
     DocumentRequirement as DocumentRequirementType,
     DocumentUpload as DocumentUploadType,
@@ -28,7 +28,7 @@ import {
     StudentProfile as StudentProfileType,
     User as UserType,
 } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import {
     AlertCircle,
     ArrowLeft,
@@ -50,6 +50,30 @@ import {
     XCircle,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { toast } from 'sonner';
+import {
+    Dialog as ShadDialog,
+    DialogTrigger as ShadDialogTrigger,
+    DialogContent as ShadDialogContent,
+    DialogHeader as ShadDialogHeader,
+    DialogTitle as ShadDialogTitle,
+    DialogDescription as ShadDialogDescription,
+    DialogFooter as ShadDialogFooter,
+    DialogClose as ShadDialogClose,
+} from '@/components/ui/dialog';
+
+// Extend CommunityServiceReportType to allow entries for tracked reports
+interface CommunityServiceEntryType {
+    id: number;
+    status: string;
+    service_date: string;
+    hours_completed: number;
+}
+
+interface CommunityServiceReportType extends CommunityServiceReportTypeBase {
+    entries?: CommunityServiceEntryType[];
+}
 
 interface ApplicationShowProps {
     application: ApplicationType & {
@@ -160,6 +184,7 @@ export default function Show({
     documentStatuses = documentStatusOptionsProvided,
 }: ApplicationShowProps) {
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
+    const [confirmModal, setConfirmModal] = useState<{ open: boolean; reportId?: number; action?: 'approve' | 'reject' }>({ open: false });
 
     const {
         data: statusForm,
@@ -221,6 +246,29 @@ export default function Show({
         });
     };
 
+    const handleApproveReport = (reportId: number) => {
+        router.patch(
+            route('admin.community-service.update-status', reportId),
+            { status: 'approved' },
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success('Report approved successfully.'),
+                onError: () => toast.error('Failed to approve report.'),
+            }
+        );
+    };
+    const handleRejectReport = (reportId: number) => {
+        router.patch(
+            route('admin.community-service.update-status', reportId),
+            { status: 'rejected_other' },
+            {
+                preserveScroll: true,
+                onSuccess: () => toast.success('Report rejected.'),
+                onError: () => toast.error('Failed to reject report.'),
+            }
+        );
+    };
+
     const FilePreviewDisplay: React.FC<{ upload: DocumentUploadType }> = ({ upload }) => {
         const fileType = getFileType(upload.original_filename);
         const filePath = route('admin.documents.view', upload.id);
@@ -250,11 +298,12 @@ export default function Show({
     };
 
     const DocumentReviewForm: React.FC<{ docReq: DocumentRequirementType; upload?: DocumentUploadType }> = ({ docReq, upload }) => {
-        const { data, setData, post, processing, errors, reset } = useForm({
+        const docForm = useForm({
             status: upload?.status || 'pending_review',
             rejection_reason: upload?.rejection_reason || '',
             _method: 'PATCH',
         });
+        const { data, setData, post, processing, errors, reset } = docForm;
 
         useEffect(() => {
             // Keep form in sync if upload prop changes (e.g., after successful review)
@@ -330,7 +379,7 @@ export default function Show({
                 </div>
 
                 <Badge variant={currentDocStatusConfig.variant} className="my-2 text-xs whitespace-nowrap capitalize">
-                    <currentDocStatusConfig.icon className={cn('mr-1 h-3.5 w-3.5', currentDocStatusConfig.colorClass)} />
+                    {React.createElement(currentDocStatusConfig.icon, { className: cn('mr-1 h-3.5 w-3.5', currentDocStatusConfig.colorClass) })}
                     Current Status: {currentDocStatusConfig.label}
                 </Badge>
 
@@ -386,6 +435,102 @@ export default function Show({
 
     const overallStatusConfig = getStatusConfig(application.status);
 
+    // Determine if all documents are approved
+    const allDocsApproved = documentsWithStatus.length > 0 && documentsWithStatus.every(doc => doc.status === 'approved');
+
+    const renderCommunityServiceReports = () => {
+        if (!application.communityServiceReports || application.communityServiceReports.length === 0) return null;
+        const pdfReport = application.communityServiceReports.find(r => r.report_type === 'pdf_upload' && r.pdf_report_path);
+        if (pdfReport) {
+            return (
+                <div key={pdfReport.id} className="rounded-md border p-4 mb-4 bg-muted/10">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                            <Badge variant={getStatusConfig(pdfReport.status).variant} className="capitalize">
+                                {React.createElement(getStatusConfig(pdfReport.status).icon, { className: getStatusConfig(pdfReport.status).colorClass + ' mr-1 h-4 w-4' })}
+                                {getStatusConfig(pdfReport.status).label}
+                            </Badge>
+                            <span className="font-semibold">Report #{pdfReport.id}</span>
+                            <span className="text-xs text-muted-foreground">PDF Upload</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="border-green-500 text-green-700" disabled={pdfReport.status === 'approved'} onClick={() => setConfirmModal({ open: true, reportId: pdfReport.id, action: 'approve' })}>
+                                Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-red-500 text-red-700" disabled={pdfReport.status === 'approved'} onClick={() => setConfirmModal({ open: true, reportId: pdfReport.id, action: 'reject' })}>
+                                Reject
+                            </Button>
+                            <Button size="sm" variant="outline" asChild>
+                                <a href={route('admin.community-service.reports.download-pdf', { report: pdfReport.id })} target="_blank" rel="noopener noreferrer">
+                                    <Download className="h-4 w-4 mr-1" /> Download PDF
+                                </a>
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="mb-2">
+                        <span className="font-medium">Description:</span> {pdfReport.description}
+                    </div>
+                </div>
+            );
+        }
+        // If no PDF, show all tracked reports as before
+        return application.communityServiceReports.filter(r => r.report_type !== 'pdf_upload').map((report) => {
+            const trackedReport = report as CommunityServiceReportType;
+            return (
+                <div key={report.id} className="rounded-md border p-4 mb-4 bg-muted/10">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                            <Badge variant={getStatusConfig(report.status).variant} className="capitalize">
+                                {React.createElement(getStatusConfig(report.status).icon, { className: getStatusConfig(report.status).colorClass + ' mr-1 h-4 w-4' })}
+                                {getStatusConfig(report.status).label}
+                            </Badge>
+                            <span className="font-semibold">Report #{report.id}</span>
+                            <span className="text-xs text-muted-foreground">Tracked Sessions</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button size="sm" variant="outline" className="border-green-500 text-green-700" disabled={report.status === 'approved'} onClick={() => setConfirmModal({ open: true, reportId: report.id, action: 'approve' })}>
+                                Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="border-red-500 text-red-700" disabled={report.status === 'approved'} onClick={() => setConfirmModal({ open: true, reportId: report.id, action: 'reject' })}>
+                                Reject
+                            </Button>
+                        </div>
+                    </div>
+                    <div className="mb-2">
+                        <span className="font-medium">Description:</span> {report.description}
+                    </div>
+                    {report.report_type === 'tracked' && (trackedReport.entries?.length ?? 0) > 0 && (
+                        <div className="mt-4">
+                            <div className="font-semibold mb-2">Service Sessions</div>
+                            <div className="space-y-2">
+                                {trackedReport.entries?.map((entry: CommunityServiceEntryType) => (
+                                    <div key={entry.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 p-3 rounded border bg-background">
+                                        <div className="flex items-center gap-2">
+                                            <Badge variant={getStatusConfig(entry.status).variant} className="capitalize">
+                                                {React.createElement(getStatusConfig(entry.status).icon, { className: getStatusConfig(entry.status).colorClass + ' mr-1 h-3 w-3' })}
+                                                {getStatusConfig(entry.status).label}
+                                            </Badge>
+                                            <span className="font-medium">Session #{entry.id}</span>
+                                            <span className="text-xs text-muted-foreground">{entry.service_date} | {entry.hours_completed}h</span>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button size="sm" variant="outline" className="border-green-500 text-green-700" disabled={entry.status === 'approved'}>
+                                                Approve
+                                            </Button>
+                                            <Button size="sm" variant="outline" className="border-red-500 text-red-700" disabled={entry.status === 'approved'}>
+                                                Reject
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        });
+    };
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={`Application #${application.id}`} />
@@ -411,7 +556,7 @@ export default function Show({
                         </div>
                         <div className="flex flex-shrink-0 items-center gap-2">
                             <Badge variant={overallStatusConfig.variant} className="px-3 py-1.5 text-sm capitalize">
-                                <overallStatusConfig.icon className={cn('mr-1.5 h-4 w-4', overallStatusConfig.colorClass)} />
+                                {React.createElement(overallStatusConfig.icon, { className: cn('mr-1.5 h-4 w-4', overallStatusConfig.colorClass) })}
                                 {overallStatusConfig.label}
                             </Badge>
                             <Dialog
@@ -572,7 +717,8 @@ export default function Show({
 
                     {/* Right Column: Document Processing & Other Details */}
                     <div className="space-y-6 lg:col-span-8">
-                        <Card>
+                        <Collapsible defaultOpen={!allDocsApproved}>
+                            <div className="flex items-center justify-between">
                             <CardHeader>
                                 <CardTitle className="flex items-center text-xl">
                                     <ListChecks className="text-primary mr-2 h-6 w-6" />
@@ -583,6 +729,16 @@ export default function Show({
                                     {allDocumentRequirements.length === 0 && ' No document requirements for this scholarship program.'}
                                 </CardDescription>
                             </CardHeader>
+                                <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" className="ml-2">
+                                        {allDocsApproved ? 'Show Documents' : 'Hide Documents'}
+                                        {allDocsApproved && (
+                                            <Badge variant="default" className="ml-2">All Approved</Badge>
+                                        )}
+                                    </Button>
+                                </CollapsibleTrigger>
+                            </div>
+                            <CollapsibleContent>
                             <CardContent className="space-y-6">
                                 {documentsWithStatus.length > 0
                                     ? documentsWithStatus.map(({ requirement, upload }) => (
@@ -607,32 +763,22 @@ export default function Show({
                                           </p>
                                       )}
                             </CardContent>
-                        </Card>
+                            </CollapsibleContent>
+                        </Collapsible>
 
                         {application.communityServiceReports && application.communityServiceReports.length > 0 && (
                             <Card>
                                 <CardHeader>
                                     <CardTitle className="flex items-center text-xl">
                                         <Award className="text-primary mr-2 h-6 w-6" />
-                                        Community Service
+                                        Community Service Approval
                                     </CardTitle>
+                                    <CardDescription>
+                                        Review and approve community service reports and sessions submitted by the student.
+                                    </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-3">
-                                    {application.communityServiceReports.map((report) => (
-                                        <div key={report.id} className="rounded-md border p-3">
-                                            <p className="font-medium">
-                                                {report.organization_name} - {report.hours} hours
-                                            </p>
-                                            <p className="text-muted-foreground text-sm">{report.description}</p>
-                                            <p className="text-muted-foreground text-xs">
-                                                Date: {formatDate(report.service_date)} | Status:{' '}
-                                                <Badge variant="outline" className="capitalize">
-                                                    {getStatusConfig(report.status).label}
-                                                </Badge>
-                                            </p>
-                                            {/* Add review form/modal trigger here if needed for service reports */}
-                                        </div>
-                                    ))}
+                                <CardContent className="space-y-6">
+                                    {renderCommunityServiceReports()}
                                 </CardContent>
                             </Card>
                         )}
@@ -667,6 +813,36 @@ export default function Show({
                     </div>
                 </div>
             </div>
+
+            <ShadDialog open={confirmModal.open} onOpenChange={open => setConfirmModal(c => ({ ...c, open }))}>
+                <ShadDialogContent>
+                    <ShadDialogHeader>
+                        <ShadDialogTitle>
+                            {confirmModal.action === 'approve' ? 'Approve Report?' : 'Reject Report?'}
+                        </ShadDialogTitle>
+                        <ShadDialogDescription>
+                            {confirmModal.action === 'approve'
+                                ? 'Are you sure you want to approve this community service report?'
+                                : 'Are you sure you want to reject this community service report?'}
+                        </ShadDialogDescription>
+                    </ShadDialogHeader>
+                    <ShadDialogFooter>
+                        <Button
+                            onClick={() => {
+                                if (confirmModal.reportId && confirmModal.action === 'approve') handleApproveReport(confirmModal.reportId);
+                                if (confirmModal.reportId && confirmModal.action === 'reject') handleRejectReport(confirmModal.reportId);
+                                setConfirmModal({ open: false });
+                            }}
+                            variant={confirmModal.action === 'approve' ? 'default' : 'destructive'}
+                        >
+                            {confirmModal.action === 'approve' ? 'Approve' : 'Reject'}
+                        </Button>
+                        <ShadDialogClose asChild>
+                            <Button variant="outline">Cancel</Button>
+                        </ShadDialogClose>
+                    </ShadDialogFooter>
+                </ShadDialogContent>
+            </ShadDialog>
         </AppLayout>
     );
 }

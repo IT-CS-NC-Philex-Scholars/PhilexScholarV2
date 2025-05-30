@@ -224,8 +224,8 @@ export default function Profile({ mustVerifyEmail, status }: { mustVerifyEmail: 
                         </Card>
                     </motion.div>
                     
-                    <motion.div variants={itemVariants} className="grid gap-8 md:grid-cols-3">
-                        <div className="md:col-span-2 space-y-8">
+                    <motion.div variants={itemVariants} className="space-y-10">
+                        <div className="space-y-8">
                             <motion.div 
                                 variants={itemVariants}
                                 whileHover={{ y: -4, transition: { duration: 0.3 } }}
