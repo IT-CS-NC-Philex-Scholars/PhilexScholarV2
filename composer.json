@@ -19,7 +19,8 @@
         "laravel/tinker": "^2.10.1",
         "tightenco/ziggy": "^2.4",
         "ext-intl": "*",
-        "ext-redis": "*"
+        "ext-redis": "*",
+        "ext-pcntl": "*"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.5",
