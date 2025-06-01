@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\CommunityServiceReport;
 use App\Models\CommunityServiceEntry;
 use App\Models\ScholarshipApplication;
+use App\Notifications\DatabaseNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -293,11 +294,18 @@ final class CommunityServiceController extends Controller
             'rejection_reason' => ['required_if:status,rejected_insufficient_hours,rejected_incomplete_documentation,rejected_other', 'string', 'max:500'],
         ]);
 
+        $oldStatus = $report->status;
+
         $report->update([
             'status' => $validated['status'],
             'rejection_reason' => $validated['rejection_reason'] ?? null,
             'reviewed_at' => now(),
         ]);
+
+        // Send notification if status changed
+        if ($oldStatus !== $validated['status']) {
+            $this->sendReportStatusNotification($report, $validated['status'], $validated['rejection_reason'] ?? null);
+        }
 
         // Update application status based on report approval
         if ($validated['status'] === 'approved') {
@@ -321,10 +329,17 @@ final class CommunityServiceController extends Controller
             'admin_notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $oldStatus = $entry->status;
+
         $entry->update([
             'status' => $validated['status'],
             'admin_notes' => $validated['admin_notes'] ?? null,
         ]);
+
+        // Send notification if status changed
+        if ($oldStatus !== $validated['status']) {
+            $this->sendEntryStatusNotification($entry, $validated['status'], $validated['admin_notes'] ?? null);
+        }
 
         $message = $validated['status'] === 'approved' 
             ? 'Community service entry approved successfully.'
@@ -347,6 +362,9 @@ final class CommunityServiceController extends Controller
 
         $status = $validated['action'] === 'approve' ? 'approved' : 'rejected_other';
         
+        // Get reports before updating to send notifications
+        $reports = CommunityServiceReport::whereIn('id', $validated['report_ids'])->get();
+        
         CommunityServiceReport::whereIn('id', $validated['report_ids'])
             ->update([
                 'status' => $status,
@@ -354,9 +372,13 @@ final class CommunityServiceController extends Controller
                 'reviewed_at' => now(),
             ]);
 
+        // Send notifications for each updated report
+        foreach ($reports as $report) {
+            $this->sendReportStatusNotification($report, $status, $validated['rejection_reason'] ?? null);
+        }
+
         // Update application statuses for approved reports
         if ($validated['action'] === 'approve') {
-            $reports = CommunityServiceReport::whereIn('id', $validated['report_ids'])->get();
             foreach ($reports as $report) {
                 $this->checkAndUpdateApplicationStatus($report->scholarshipApplication);
             }
@@ -572,5 +594,67 @@ final class CommunityServiceController extends Controller
                 ->sum('hours_completed')
             : 0;
         return response()->json(['approved_hours' => round($approvedHours, 2)]);
+    }
+
+    /**
+     * Send notification to student when community service report status changes.
+     */
+    private function sendReportStatusNotification(CommunityServiceReport $report, string $newStatus, ?string $rejectionReason = null): void
+    {
+        $student = $report->scholarshipApplication->studentProfile->user;
+        
+        $statusMessages = [
+            'approved' => 'Your community service report has been approved!',
+            'rejected_insufficient_hours' => 'Your community service report was rejected - insufficient hours.',
+            'rejected_incomplete_documentation' => 'Your community service report was rejected - incomplete documentation.',
+            'rejected_other' => 'Your community service report was rejected.',
+        ];
+
+        $message = $statusMessages[$newStatus] ?? 'Your community service report status has been updated.';
+        
+        if ($rejectionReason) {
+            $message .= " Reason: {$rejectionReason}";
+        }
+
+        $title = 'Community Service Report Update';
+
+        $notification = new DatabaseNotification(
+            title: $title,
+            message: $message,
+            type: $newStatus === 'approved' ? 'success' : 'error',
+            actionUrl: route('student.applications.show', $report->scholarshipApplication->id)
+        );
+
+        $student->notify($notification);
+    }
+
+    /**
+     * Send notification to student when community service entry status changes.
+     */
+    private function sendEntryStatusNotification(CommunityServiceEntry $entry, string $newStatus, ?string $adminNotes = null): void
+    {
+        $student = $entry->scholarshipApplication->studentProfile->user;
+        
+        $statusMessages = [
+            'approved' => 'Your community service entry has been approved!',
+            'rejected' => 'Your community service entry was rejected.',
+        ];
+
+        $message = $statusMessages[$newStatus] ?? 'Your community service entry status has been updated.';
+        
+        if ($adminNotes) {
+            $message .= " Notes: {$adminNotes}";
+        }
+
+        $title = 'Community Service Entry Update';
+
+        $notification = new DatabaseNotification(
+            title: $title,
+            message: $message,
+            type: $newStatus === 'approved' ? 'success' : 'error',
+            actionUrl: route('student.applications.show', $entry->scholarshipApplication->id)
+        );
+
+        $student->notify($notification);
     }
 }

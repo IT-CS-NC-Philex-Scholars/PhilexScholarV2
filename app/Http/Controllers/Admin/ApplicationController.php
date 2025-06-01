@@ -9,10 +9,12 @@ use App\Models\ScholarshipApplication;
 use App\Models\DocumentUpload;
 use App\Models\CommunityServiceReport;
 use App\Models\Disbursement;
+use App\Notifications\DatabaseNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Notification;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Http\Response as IlluminateResponse;
 use Inertia\Inertia;
@@ -131,11 +133,18 @@ final class ApplicationController extends Controller
             'admin_notes' => ['nullable', 'string'],
         ]);
 
+        $oldStatus = $application->status;
+
         $application->update([
             'status' => $validated['status'],
             'admin_notes' => $validated['admin_notes'],
             'reviewed_at' => now(),
         ]);
+
+        // Send notification to student if status changed
+        if ($oldStatus !== $validated['status']) {
+            $this->sendApplicationStatusNotification($application, $validated['status']);
+        }
 
         return Redirect::back()->with('success', 'Application status updated successfully.');
     }
@@ -150,6 +159,8 @@ final class ApplicationController extends Controller
             'rejection_reason' => ['nullable', 'required_if:status,rejected_invalid,rejected_incomplete,rejected_incorrect_format,rejected_unreadable,rejected_other', 'string'],
         ]);
 
+        $oldStatus = $document->status;
+
         $document->update([
             'status' => $validated['status'],
             'rejection_reason' => $validated['rejection_reason'] ?? null,
@@ -157,6 +168,11 @@ final class ApplicationController extends Controller
         ]);
 
         $application = $document->scholarshipApplication()->first();
+
+        // Send notification to student if document status changed
+        if ($oldStatus !== $validated['status'] && $application) {
+            $this->sendDocumentStatusNotification($application, $document, $validated['status']);
+        }
 
         if ($application) {
             $allRequiredDocumentsApproved = true;
@@ -179,10 +195,16 @@ final class ApplicationController extends Controller
                 $allRequiredDocumentsApproved = true;
             }
 
+            $oldApplicationStatus = $application->status;
+
             if ($allRequiredDocumentsApproved && $application->status === 'documents_under_review') {
                 $application->update(['status' => 'documents_approved']);
+                // Send notification for application status change
+                $this->sendApplicationStatusNotification($application, 'documents_approved');
             } elseif (!$allRequiredDocumentsApproved && $application->status === 'documents_under_review' && $document->status !== 'approved' && $document->status !== 'pending_review') {
                  $application->update(['status' => 'documents_pending']);
+                 // Send notification for application status change
+                 $this->sendApplicationStatusNotification($application, 'documents_pending');
             }
         }
 
@@ -282,5 +304,76 @@ final class ApplicationController extends Controller
         }
 
         return Redirect::back()->with('success', 'Disbursement updated successfully.');
+    }
+
+    /**
+     * Send notification to student when application status changes.
+     */
+    private function sendApplicationStatusNotification(ScholarshipApplication $application, string $newStatus): void
+    {
+        $student = $application->studentProfile->user;
+        
+        $statusMessages = [
+            'pending' => 'Your scholarship application is now pending review.',
+            'documents_under_review' => 'Your documents are now under review.',
+            'documents_approved' => 'Your documents have been approved!',
+            'documents_pending' => 'Some of your documents need attention.',
+            'approved' => 'Congratulations! Your scholarship application has been approved!',
+            'rejected' => 'Unfortunately, your scholarship application has been rejected.',
+            'disbursement_pending' => 'Your scholarship is approved and disbursement is pending.',
+            'disbursement_processed' => 'Your scholarship funds have been processed!',
+            'cancelled' => 'Your scholarship application has been cancelled.',
+        ];
+
+        $message = $statusMessages[$newStatus] ?? 'Your application status has been updated.';
+        $title = 'Application Status Update';
+
+        $notification = new DatabaseNotification(
+            title: $title,
+            message: $message,
+            type: in_array($newStatus, ['approved', 'documents_approved', 'disbursement_processed']) ? 'success' : 
+                  (in_array($newStatus, ['rejected', 'cancelled']) ? 'error' : 'info'),
+            actionUrl: route('student.applications.show', $application->id)
+        );
+
+        $student->notify($notification);
+    }
+
+    /**
+     * Send notification to student when document status changes.
+     */
+    private function sendDocumentStatusNotification(ScholarshipApplication $application, DocumentUpload $document, string $newStatus): void
+    {
+        $student = $application->studentProfile->user;
+        
+        $documentName = $document->documentRequirement->name ?? 'Document';
+        
+        $statusMessages = [
+            'approved' => "Your {$documentName} has been approved!",
+            'rejected_invalid' => "Your {$documentName} was rejected - invalid document.",
+            'rejected_incomplete' => "Your {$documentName} was rejected - incomplete information.",
+            'rejected_incorrect_format' => "Your {$documentName} was rejected - incorrect format.",
+            'rejected_unreadable' => "Your {$documentName} was rejected - document is unreadable.",
+            'rejected_other' => "Your {$documentName} was rejected.",
+            'pending_review' => "Your {$documentName} is now under review.",
+        ];
+
+        $message = $statusMessages[$newStatus] ?? "Your {$documentName} status has been updated.";
+        
+        if ($document->rejection_reason) {
+            $message .= " Reason: {$document->rejection_reason}";
+        }
+
+        $title = 'Document Review Update';
+
+        $notification = new DatabaseNotification(
+            title: $title,
+            message: $message,
+            type: $newStatus === 'approved' ? 'success' : 
+                  (str_starts_with($newStatus, 'rejected') ? 'error' : 'info'),
+            actionUrl: route('student.applications.show', $application->id)
+        );
+
+        $student->notify($notification);
     }
 }

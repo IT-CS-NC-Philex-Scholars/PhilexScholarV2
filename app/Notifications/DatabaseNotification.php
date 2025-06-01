@@ -6,11 +6,12 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
 use NotificationChannels\WebPush\WebPushMessage; // Import WebPushMessage
 
-class DatabaseNotification extends Notification implements ShouldBroadcast, ShouldQueue
+class DatabaseNotification extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
@@ -23,7 +24,7 @@ class DatabaseNotification extends Notification implements ShouldBroadcast, Shou
 
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast', WebPushChannel::class];
+        return ['database', 'broadcast', 'mail', WebPushChannel::class];
     }
 
     public function toDatabase(object $notifiable): array
@@ -34,6 +35,17 @@ class DatabaseNotification extends Notification implements ShouldBroadcast, Shou
             'type' => $this->type,
             'action_url' => $this->actionUrl,
         ];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+                    ->subject($this->title)
+                    ->line($this->message)
+                    ->when(!empty($this->actionUrl), function ($mail) {
+                        $mail->action('View Details', $this->actionUrl);
+                    })
+                    ->line('Thank you for using our application!');
     }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
