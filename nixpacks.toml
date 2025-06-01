@@ -1,0 +1,8 @@
+[build]
+cmd = "bun run build"
+
+[install]
+cmd = "bun install"
+
+[variables]
+NODE_ENV = "production"
