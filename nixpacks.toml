@@ -8,11 +8,7 @@ cmds = ["bun install", "composer install --no-dev --optimize-autoloader"]
 cmds = [
     "bun run build",
     "mkdir -p storage/database",
-    "chmod -R 775 storage"
-]
-
-[phases.deploy]
-cmds = [
+    "chmod -R 775 storage",
     "php artisan config:cache",
     "php artisan route:cache",
     "php artisan view:cache"
