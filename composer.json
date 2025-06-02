@@ -12,15 +12,16 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "ext-intl": "*",
+        "ext-pcntl": "*",
+        "ext-sqlite3": "*",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel-notification-channels/webpush": "^10.2",
         "laravel/framework": "^12.0",
+        "laravel/octane": "^2.9",
         "laravel/reverb": "^1.0",
         "laravel/tinker": "^2.10.1",
-        "tightenco/ziggy": "^2.4",
-        "ext-intl": "*",
-        "ext-pcntl": "*",
-        "ext-sqlite3": "*"
+        "tightenco/ziggy": "^2.4"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.5",
