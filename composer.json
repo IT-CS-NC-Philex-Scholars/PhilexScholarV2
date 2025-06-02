@@ -19,7 +19,6 @@
         "laravel/tinker": "^2.10.1",
         "tightenco/ziggy": "^2.4",
         "ext-intl": "*",
-        "ext-redis": "*",
         "ext-pcntl": "*",
         "ext-sqlite3": "*"
     },
