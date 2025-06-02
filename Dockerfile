@@ -23,10 +23,13 @@ ENV XDG_CONFIG_HOME=/config \
 
 # Install composer and PHP extensions
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-RUN install-php-extensions \
+RUN apk add --no-cache sqlite && \
+    install-php-extensions \
     pcntl \
     intl \
     pdo_mysql \
+    pdo_sqlite \
+    sqlite3 \
     zip \
     bcmath && \
     # Cleanup
@@ -53,9 +56,11 @@ RUN composer install --prefer-dist --optimize-autoloader && \
     php artisan config:cache && \
     php artisan route:cache && \
     php artisan event:cache && \
-    # Set proper permissions
+    # Create database directory and set proper permissions
+    mkdir -p storage/database && \
     chown -R appuser:appgroup /app && \
-    chmod -R 755 storage bootstrap/cache && \
+    chmod -R 775 storage bootstrap/cache && \
+    chmod -R 775 storage/database && \
     rm -rf tests node_modules docker .git* && \
     composer clear-cache
 
