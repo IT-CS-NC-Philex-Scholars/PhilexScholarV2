@@ -15,40 +15,17 @@ class HandleSocialitePlusProviders
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $socialitePlusConfig = config('socialiteplus');
+        $providers = collect(config('socialiteplus.providers'))->filter(fn ($provider) => $provider['active'])->map(fn ($provider) => [
+            'name' => $provider['name'],
+            'icon' => $provider['icon'],
+            'branded' => $provider['branded'],
+        ])->toArray();
 
-        // Provide sensible defaults if the config is not fully set up or missing
-        if (is_null($socialitePlusConfig)) {
-            $socialitePlusConfig = [
-                'disable_credentials_login' => false,
-                'button_text' => '{provider}',
-                'providers' => [],
-            ];
-        }
+        $providerConfig = config('socialiteplus');
 
-        $disableCredentialsLogin = $socialitePlusConfig['disable_credentials_login'] ?? false;
-        $buttonText = $socialitePlusConfig['button_text'] ?? '{provider}'; // Default button text
-        $allConfiguredProviders = collect($socialitePlusConfig['providers'] ?? []);
+        $providerConfig['providers'] = $providers;
 
-        $activeProviders = $allConfiguredProviders->filter(function ($providerDetails) {
-            // Ensure providerDetails is an array and has 'active' and 'name' keys
-            return is_array($providerDetails) && !empty($providerDetails['active']) && !empty($providerDetails['name']);
-        })->map(function ($providerDetails) {
-            $name = $providerDetails['name']; // 'name' is confirmed to exist by the filter
-            return [
-                'name' => $name,
-                'icon' => $providerDetails['icon'] ?? '', // Default icon if not set
-                'branded' => $providerDetails['branded'] ?? false, // Pass the branded flag
-            ];
-        })->values()->toArray(); // ->values() to ensure array keys are re-indexed from 0
-
-        $finalProvidersConfig = [
-            'button_text' => $buttonText,
-            'providers' => $activeProviders,
-            'disable_credentials_login' => $disableCredentialsLogin,
-        ];
-
-        $request->attributes->set('providersConfig', $finalProvidersConfig);
+        $request->attributes->set('providersConfig', $providerConfig);
 
         return $next($request);
     }
