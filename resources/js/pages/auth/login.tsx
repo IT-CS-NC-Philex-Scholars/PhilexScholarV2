@@ -6,7 +6,8 @@ import {
     InstagramIcon,
     LoaderCircle,
     TwitchIcon,
-    TwitterIcon,
+    FacebookIcon,
+    
 } from 'lucide-react';
 
 import InputError from '@/components/input-error';
@@ -48,41 +49,16 @@ export default function Login({ status, canResetPassword }: LoginProps) {
             <Head title="Log in" />
 
             <div className="mt-8 flex items-center gap-3 justify-center">
+               
+               
                 <Button
                     variant="outline"
                     size="icon"
                     className="rounded-full h-10 w-10"
                 >
-                    <GithubIcon className="!h-[18px] !w-[18px]" />
+                    <FacebookIcon className="!h-[18px] !w-[18px]" />
                 </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full h-10 w-10"
-                >
-                    <InstagramIcon className="!h-[18px] !w-[18px]" />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full h-10 w-10"
-                >
-                    <TwitterIcon className="!h-[18px] !w-[18px]" />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full h-10 w-10"
-                >
-                    <FigmaIcon className="!h-[18px] !w-[18px]" />
-                </Button>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full h-10 w-10"
-                >
-                    <TwitchIcon className="!h-[18px] !w-[18px]" />
-                </Button>
+            
             </div>
 
             <div className="my-7 w-full flex items-center justify-center overflow-hidden">
