@@ -18,10 +18,9 @@ type RegisterForm = {
 };
 
 interface SocialRegisterProps {
-  providersConfig?: {
+  providersConfig: {
     button_text: string;
-    providers: { name: string; icon: string; branded: boolean }[];
-    disable_credentials_login?: boolean;
+    providers: { name: string; icon: string; style: string }[];
   };
 }
 
@@ -42,37 +41,14 @@ export default function Register({ providersConfig }: SocialRegisterProps) {
     });
   };
 
-  const noProvidersAvailable =
-    !providersConfig?.providers || providersConfig.providers.length === 0;
-  const credentialsDisabled = providersConfig?.disable_credentials_login;
-
-  let layoutTitle = "Create an account";
-  let layoutDescription = "Enter your details below to create your account";
-
-  if (credentialsDisabled) {
-    if (noProvidersAvailable) {
-      layoutTitle = "Registration Unavailable";
-      layoutDescription =
-        "No registration methods are currently configured. Please contact an administrator.";
-    } else {
-      layoutTitle = "Sign up with your social account";
-      layoutDescription = "Select a provider below to create your account.";
-    }
-  }
-
-  const noRegistrationMethodsConfigured = credentialsDisabled && noProvidersAvailable;
-
   return (
     <AuthLayout
-      title={layoutTitle}
-      description={layoutDescription}
+      title="Create an account"
+      description="Enter your details below to create your account"
     >
       <Head title="Register" />
-      {!noRegistrationMethodsConfigured && (
       <form className="flex flex-col gap-6" onSubmit={submit}>
-        {!providersConfig?.disable_credentials_login && (
-          <>
-            <div className="grid gap-6">
+        <div className="grid gap-6">
           <div className="grid gap-2">
             <Label htmlFor="name">Name</Label>
             <Input
@@ -147,27 +123,17 @@ export default function Register({ providersConfig }: SocialRegisterProps) {
             {processing && <LoaderCircle className="w-4 h-4 animate-spin" />}
             Create account
           </Button>
-            </div>
-          </>
-        )}
+        </div>
 
-        {providersConfig && providersConfig.providers && providersConfig.providers.length > 0 && (
-          <SocialitePlus
-            providersConfig={providersConfig}
-            showCredentialForm={!providersConfig.disable_credentials_login}
-          />
-        )}
+        <SocialitePlus providersConfig={providersConfig} />
 
-        {!providersConfig?.disable_credentials_login && (
-          <div className="text-sm text-center text-muted-foreground">
-            Already have an account?{" "}
-            <TextLink href={route("login")} tabIndex={6}>
-              Log in
-            </TextLink>
-          </div>
-        )}
+        <div className="text-sm text-center text-muted-foreground">
+          Already have an account?{" "}
+          <TextLink href={route("login")} tabIndex={6}>
+            Log in
+          </TextLink>
+        </div>
       </form>
-      )}
     </AuthLayout>
   );
 }

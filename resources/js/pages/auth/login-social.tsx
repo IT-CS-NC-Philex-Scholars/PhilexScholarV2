@@ -24,10 +24,9 @@ interface LoginProps {
 }
 
 interface SocialRegisterProps {
-  providersConfig?: {
+  providersConfig: {
     button_text: string;
-    providers: { name: string; icon: string; branded: boolean }[];
-    disable_credentials_login?: boolean;
+    providers: { name: string; icon: string; style: string }[];
   };
 }
 
@@ -51,39 +50,16 @@ export default function Login({
     });
   };
 
-  const noProvidersAvailable =
-    !providersConfig?.providers || providersConfig.providers.length === 0;
-  const credentialsDisabled = providersConfig?.disable_credentials_login;
-
-  let layoutTitle = "Log in to your account";
-  let layoutDescription = "Enter your email and password below to log in";
-
-  if (credentialsDisabled) {
-    if (noProvidersAvailable) {
-      layoutTitle = "Login Unavailable";
-      layoutDescription =
-        "No login methods are currently configured. Please contact an administrator.";
-    } else {
-      layoutTitle = "Log in with your social account";
-      layoutDescription = "Select a provider below to continue.";
-    }
-  }
-
-  const noLoginMethodsConfigured = credentialsDisabled && noProvidersAvailable;
-
   return (
     <AuthLayout
-      title={layoutTitle}
-      description={layoutDescription}
+      title="Log in to your account"
+      description="Enter your email and password below to log in"
     >
       <Head title="Log in" />
 
-      {!noLoginMethodsConfigured && (
-        <form className="flex flex-col gap-6" onSubmit={submit}>
-          {!providersConfig?.disable_credentials_login && (
-            <>
-              <div className="grid gap-6">
-            <div className="grid gap-2">
+      <form className="flex flex-col gap-6" onSubmit={submit}>
+        <div className="grid gap-6">
+          <div className="grid gap-2">
             <Label htmlFor="email">Email address</Label>
             <Input
               id="email"
@@ -145,27 +121,17 @@ export default function Login({
             {processing && <LoaderCircle className="w-4 h-4 animate-spin" />}
             Log in
           </Button>
-            </div>
-          </>
-        )}
+        </div>
 
-        {providersConfig && providersConfig.providers && providersConfig.providers.length > 0 && (
-          <SocialitePlus
-            providersConfig={providersConfig}
-            showCredentialForm={!providersConfig.disable_credentials_login}
-          />
-        )}
+        <SocialitePlus providersConfig={providersConfig} />
 
-        {!providersConfig?.disable_credentials_login && (
-          <div className="text-sm text-center text-muted-foreground">
-            Don't have an 2 account?{" "}
-            <TextLink href={route("register")} tabIndex={5}>
-              Sign up
-            </TextLink>
-          </div>
-        )}
-        </form>
-      )}
+        <div className="text-sm text-center text-muted-foreground">
+          Don't have an account?{" "}
+          <TextLink href={route("register")} tabIndex={5}>
+            Sign up
+          </TextLink>
+        </div>
+      </form>
 
       {status && (
         <div className="mb-4 text-sm font-medium text-center text-green-600">

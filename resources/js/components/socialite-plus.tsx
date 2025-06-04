@@ -15,7 +15,6 @@ interface SocialitePlusProps {
     button_text: string;
     providers: Provider[];
   };
-  showCredentialForm?: boolean;
 }
 
 const getProviderClasses = (provider: Provider) => {
@@ -42,23 +41,18 @@ const iconMap = {
   LinkedInIcon: LinkedInIcon,
 };
 
-export default function SocialitePlus({
-  providersConfig,
-  showCredentialForm,
-}: SocialitePlusProps) {
+export default function SocialitePlus({ providersConfig }: SocialitePlusProps) {
   return (
     <>
-      {showCredentialForm && (
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div className="bg-border h-px w-full" />
-          </div>
-          or
-          <div className="flex-1">
-            <div className="bg-border h-px w-full" />
-          </div>
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="bg-border h-px w-full" />
         </div>
-      )}
+        or
+        <div className="flex-1">
+          <div className="bg-border h-px w-full" />
+        </div>
+      </div>
 
       <div className="flex flex-col gap-4">
         {Object.values(providersConfig.providers).map((provider) => {
