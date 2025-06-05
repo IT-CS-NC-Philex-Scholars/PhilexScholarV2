@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Helpers\LoginLinkHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -24,6 +25,8 @@ final class AuthenticatedSessionController extends Controller
             'canResetPassword' => Route::has('password.request'),
             'status' => $request->session()->get('status'),
             'providersConfig' => $request->attributes->get('providersConfig'),
+            'isDevelopment' => app()->environment('local', 'development'),
+            'loginLinks' => LoginLinkHelper::generateLoginLinks()->toArray(),
         ]);
     }
 
