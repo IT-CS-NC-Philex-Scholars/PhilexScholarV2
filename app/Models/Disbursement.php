@@ -18,12 +18,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $disbursed_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\ScholarshipApplication $scholarshipApplication
+ * @property-read ScholarshipApplication $scholarshipApplication
  */
 final class Disbursement extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -37,7 +37,15 @@ final class Disbursement extends Model
         'reference_number',
         'disbursed_at',
     ];
-    
+
+    /**
+     * Get the scholarship application that owns the disbursement.
+     */
+    public function scholarshipApplication(): BelongsTo
+    {
+        return $this->belongsTo(ScholarshipApplication::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -49,13 +57,5 @@ final class Disbursement extends Model
             'amount' => 'decimal:2',
             'disbursed_at' => 'datetime',
         ];
-    }
-    
-    /**
-     * Get the scholarship application that owns the disbursement.
-     */
-    public function scholarshipApplication(): BelongsTo
-    {
-        return $this->belongsTo(ScholarshipApplication::class);
     }
 }

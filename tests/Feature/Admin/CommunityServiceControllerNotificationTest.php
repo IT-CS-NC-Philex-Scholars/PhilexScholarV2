@@ -4,25 +4,29 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Admin;
 
-use App\Models\User;
-use App\Models\StudentProfile;
-use App\Models\ScholarshipProgram;
-use App\Models\ScholarshipApplication;
-use App\Models\CommunityServiceReport;
 use App\Models\CommunityServiceEntry;
+use App\Models\CommunityServiceReport;
+use App\Models\ScholarshipApplication;
+use App\Models\ScholarshipProgram;
+use App\Models\StudentProfile;
+use App\Models\User;
 use App\Notifications\DatabaseNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
-class CommunityServiceControllerNotificationTest extends TestCase
+final class CommunityServiceControllerNotificationTest extends TestCase
 {
     use RefreshDatabase;
 
     private User $adminUser;
+
     private User $studentUser;
+
     private ScholarshipApplication $application;
+
     private CommunityServiceReport $report;
+
     private CommunityServiceEntry $entry;
 
     protected function setUp(): void
@@ -86,10 +90,8 @@ class CommunityServiceControllerNotificationTest extends TestCase
         Notification::assertSentTo(
             $this->studentUser,
             DatabaseNotification::class,
-            function ($notification) {
-                return $notification->title === 'Community Service Report Update' &&
-                       str_contains($notification->message, 'approved');
-            }
+            fn($notification): bool => $notification->title === 'Community Service Report Update' &&
+                   str_contains((string) $notification->message, 'approved')
         );
     }
 
@@ -106,11 +108,9 @@ class CommunityServiceControllerNotificationTest extends TestCase
         Notification::assertSentTo(
             $this->studentUser,
             DatabaseNotification::class,
-            function ($notification) {
-                return $notification->title === 'Community Service Report Update' &&
-                       str_contains($notification->message, 'rejected - insufficient hours') &&
-                       str_contains($notification->message, 'Not enough hours completed');
-            }
+            fn($notification): bool => $notification->title === 'Community Service Report Update' &&
+                   str_contains((string) $notification->message, 'rejected - insufficient hours') &&
+                   str_contains((string) $notification->message, 'Not enough hours completed')
         );
     }
 
@@ -127,11 +127,9 @@ class CommunityServiceControllerNotificationTest extends TestCase
         Notification::assertSentTo(
             $this->studentUser,
             DatabaseNotification::class,
-            function ($notification) {
-                return $notification->title === 'Community Service Entry Update' &&
-                       str_contains($notification->message, 'approved') &&
-                       str_contains($notification->message, 'Great work!');
-            }
+            fn($notification): bool => $notification->title === 'Community Service Entry Update' &&
+                   str_contains((string) $notification->message, 'approved') &&
+                   str_contains((string) $notification->message, 'Great work!')
         );
     }
 
@@ -167,10 +165,8 @@ class CommunityServiceControllerNotificationTest extends TestCase
         Notification::assertSentTo(
             $this->studentUser,
             DatabaseNotification::class,
-            function ($notification) {
-                return $notification->title === 'Community Service Report Update' &&
-                       str_contains($notification->message, 'approved');
-            }
+            fn($notification): bool => $notification->title === 'Community Service Report Update' &&
+                   str_contains((string) $notification->message, 'approved')
         );
 
         // Should send 2 notifications (one for each report)

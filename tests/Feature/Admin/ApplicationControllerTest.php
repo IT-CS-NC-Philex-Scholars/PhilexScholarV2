@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-use App\Models\ScholarshipApplication;
-use App\Models\DocumentUpload;
 use App\Models\CommunityServiceReport;
 use App\Models\Disbursement;
+use App\Models\DocumentUpload;
+use App\Models\ScholarshipApplication;
 use App\Models\User;
 use App\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\Notification;
 
-test('admin can view all applications', function () {
+test('admin can view all applications', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -30,7 +30,7 @@ test('admin can view all applications', function () {
     );
 });
 
-test('admin can view a specific application', function () {
+test('admin can view a specific application', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -51,7 +51,7 @@ test('admin can view a specific application', function () {
     );
 });
 
-test('admin can update application status', function () {
+test('admin can update application status', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -71,7 +71,7 @@ test('admin can update application status', function () {
 
     $response->assertSessionHasNoErrors();
     $response->assertRedirect();
-    
+
     // Check the database was updated
     $this->assertDatabaseHas('scholarship_applications', [
         'id' => $application->id,
@@ -80,7 +80,7 @@ test('admin can update application status', function () {
     ]);
 });
 
-test('admin can review document uploads', function () {
+test('admin can review document uploads', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -99,7 +99,7 @@ test('admin can review document uploads', function () {
 
     $response->assertSessionHasNoErrors();
     $response->assertRedirect();
-    
+
     // Check the database was updated
     $this->assertDatabaseHas('document_uploads', [
         'id' => $document->id,
@@ -108,7 +108,7 @@ test('admin can review document uploads', function () {
     ]);
 });
 
-test('admin can review service reports', function () {
+test('admin can review service reports', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -127,7 +127,7 @@ test('admin can review service reports', function () {
 
     $response->assertSessionHasNoErrors();
     $response->assertRedirect();
-    
+
     // Check the database was updated
     $this->assertDatabaseHas('community_service_reports', [
         'id' => $report->id,
@@ -136,7 +136,7 @@ test('admin can review service reports', function () {
     ]);
 });
 
-test('admin can create a disbursement for an application', function () {
+test('admin can create a disbursement for an application', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -160,7 +160,7 @@ test('admin can create a disbursement for an application', function () {
 
     $response->assertSessionHasNoErrors();
     $response->assertRedirect();
-    
+
     // Check the database was updated
     $this->assertDatabaseHas('disbursements', [
         'scholarship_application_id' => $application->id,
@@ -169,7 +169,7 @@ test('admin can create a disbursement for an application', function () {
         'reference_number' => 'REF12345',
         'status' => 'processed',
     ]);
-    
+
     // Check the application status was updated
     $this->assertDatabaseHas('scholarship_applications', [
         'id' => $application->id,
@@ -177,7 +177,7 @@ test('admin can create a disbursement for an application', function () {
     ]);
 });
 
-test('admin can update an existing disbursement', function () {
+test('admin can update an existing disbursement', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -205,7 +205,7 @@ test('admin can update an existing disbursement', function () {
 
     $response->assertSessionHasNoErrors();
     $response->assertRedirect();
-    
+
     // Check the database was updated
     $this->assertDatabaseHas('disbursements', [
         'id' => $disbursement->id,
@@ -216,9 +216,9 @@ test('admin can update an existing disbursement', function () {
     ]);
 });
 
-test('notification is sent when application status is updated', function () {
+test('notification is sent when application status is updated', function (): void {
     Notification::fake();
-    
+
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -237,21 +237,19 @@ test('notification is sent when application status is updated', function () {
         ]);
 
     $response->assertSessionHasNoErrors();
-    
+
     // Assert notification was sent to the student
     Notification::assertSentTo(
         $application->studentProfile->user,
         DatabaseNotification::class,
-        function ($notification) {
-            return $notification->title === 'Application Status Update' && 
-                   str_contains($notification->message, 'approved');
-        }
+        fn($notification): bool => $notification->title === 'Application Status Update' &&
+               str_contains((string) $notification->message, 'approved')
     );
 });
 
-test('notification is sent when document status is reviewed', function () {
+test('notification is sent when document status is reviewed', function (): void {
     Notification::fake();
-    
+
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -269,21 +267,19 @@ test('notification is sent when document status is reviewed', function () {
         ]);
 
     $response->assertSessionHasNoErrors();
-    
+
     // Assert notification was sent to the student
     Notification::assertSentTo(
         $document->scholarshipApplication->studentProfile->user,
         DatabaseNotification::class,
-        function ($notification) {
-            return $notification->title === 'Document Review Update' && 
-                   str_contains($notification->message, 'approved');
-        }
+        fn($notification): bool => $notification->title === 'Document Review Update' &&
+               str_contains((string) $notification->message, 'approved')
     );
 });
 
-test('notification is sent when document is rejected with reason', function () {
+test('notification is sent when document is rejected with reason', function (): void {
     Notification::fake();
-    
+
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -302,22 +298,20 @@ test('notification is sent when document is rejected with reason', function () {
         ]);
 
     $response->assertSessionHasNoErrors();
-    
+
     // Assert notification was sent to the student
     Notification::assertSentTo(
         $document->scholarshipApplication->studentProfile->user,
         DatabaseNotification::class,
-        function ($notification) {
-            return $notification->title === 'Document Review Update' && 
-                   str_contains($notification->message, 'rejected') &&
-                   str_contains($notification->message, 'Document is not clear enough');
-        }
+        fn($notification): bool => $notification->title === 'Document Review Update' &&
+               str_contains((string) $notification->message, 'rejected') &&
+               str_contains((string) $notification->message, 'Document is not clear enough')
     );
 });
 
-test('no notification is sent when status does not change', function () {
+test('no notification is sent when status does not change', function (): void {
     Notification::fake();
-    
+
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -336,7 +330,7 @@ test('no notification is sent when status does not change', function () {
         ]);
 
     $response->assertSessionHasNoErrors();
-    
+
     // Assert no notification was sent
     Notification::assertNothingSent();
 });

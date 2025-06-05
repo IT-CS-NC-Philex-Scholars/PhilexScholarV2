@@ -19,11 +19,11 @@ return new class extends Migration
             $table->text('description');
             $table->integer('days_completed');
             $table->enum('status', [
-                'pending_review', 
-                'approved', 
-                'rejected_insufficient_hours', 
+                'pending_review',
+                'approved',
+                'rejected_insufficient_hours',
                 'rejected_incomplete_documentation',
-                'rejected_other'
+                'rejected_other',
             ])->default('pending_review');
             $table->text('rejection_reason')->nullable();
             $table->timestamp('submitted_at');

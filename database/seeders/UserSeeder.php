@@ -8,7 +8,7 @@ use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
-class UserSeeder extends Seeder
+final class UserSeeder extends Seeder
 {
     /**
      * Run the database seeds.
@@ -16,23 +16,23 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        User::create([
+        \App\Models\User::query()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => bcrypt('password'),
             'role' => 'admin',
         ]);
-        
+
         // Create student users
-        $student1 = User::create([
+        $student1 = \App\Models\User::query()->create([
             'name' => 'John Doe',
             'email' => 'student@example.com',
             'password' => bcrypt('password'),
             'role' => 'student',
         ]);
-        
+
         // Create profile for first student
-        StudentProfile::create([
+        \App\Models\StudentProfile::query()->create([
             'user_id' => $student1->id,
             'address' => '123 Student St',
             'city' => 'College City',
@@ -43,16 +43,16 @@ class UserSeeder extends Seeder
             'school_level' => 'Junior',
             'school_name' => 'State University',
         ]);
-        
+
         // Create more students without profiles
-        User::create([
+        \App\Models\User::query()->create([
             'name' => 'Jane Smith',
             'email' => 'jane@example.com',
             'password' => bcrypt('password'),
             'role' => 'student',
         ]);
-        
-        User::create([
+
+        \App\Models\User::query()->create([
             'name' => 'Bob Johnson',
             'email' => 'bob@example.com',
             'password' => bcrypt('password'),

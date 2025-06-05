@@ -1,17 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use NotificationChannels\WebPush\WebPushChannel;
-use NotificationChannels\WebPush\WebPushMessage; // Import WebPushMessage
+use NotificationChannels\WebPush\WebPushMessage;
 
-class DatabaseNotification extends Notification implements ShouldBroadcast
+ // Import WebPushMessage
+
+final class DatabaseNotification extends Notification implements ShouldBroadcast
 {
     use Queueable;
 
@@ -40,12 +43,12 @@ class DatabaseNotification extends Notification implements ShouldBroadcast
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-                    ->subject($this->title)
-                    ->line($this->message)
-                    ->when(!empty($this->actionUrl), function ($mail) {
-                        $mail->action('View Details', $this->actionUrl);
-                    })
-                    ->line('Thank you for using our application!');
+            ->subject($this->title)
+            ->line($this->message)
+            ->unless($this->actionUrl === null || $this->actionUrl === '' || $this->actionUrl === '0', function ($mail): void {
+                $mail->action('View Details', $this->actionUrl);
+            })
+            ->line('Thank you for using our application!');
     }
 
     public function toBroadcast(object $notifiable): BroadcastMessage
@@ -71,7 +74,7 @@ class DatabaseNotification extends Notification implements ShouldBroadcast
     }
 
     // Add the toWebPush method
-    public function toWebPush($notifiable, $notification)
+    public function toWebPush($notifiable, $notification): \NotificationChannels\WebPush\WebPushMessage
     {
         return (new WebPushMessage)
             ->title($this->title) // Use the notification's title
@@ -79,14 +82,14 @@ class DatabaseNotification extends Notification implements ShouldBroadcast
             ->body($this->message) // Use the notification's message
             ->action('View Action', 'view_action') // Consider making this configurable
             ->options(['TTL' => 1000]); // Consider making this configurable
-            // ->data(['id' => $notification->id])
-            // ->badge()
-            // ->dir()
-            // ->image()
-            // ->lang()
-            // ->renotify()
-            // ->requireInteraction()
-            // ->tag()
-            // ->vibrate()
+        // ->data(['id' => $notification->id])
+        // ->badge()
+        // ->dir()
+        // ->image()
+        // ->lang()
+        // ->renotify()
+        // ->requireInteraction()
+        // ->tag()
+        // ->vibrate()
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
 
     /**
@@ -16,7 +18,7 @@ return [
     /**
      * This is model that will be used to for push subscriptions.
      */
-    'model' => \NotificationChannels\WebPush\PushSubscription::class,
+    'model' => NotificationChannels\WebPush\PushSubscription::class,
 
     /**
      * This is the name of the table that will be created by the migration and

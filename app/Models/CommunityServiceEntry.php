@@ -22,12 +22,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null $admin_notes
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\ScholarshipApplication $scholarshipApplication
+ * @property-read ScholarshipApplication $scholarshipApplication
  */
 final class CommunityServiceEntry extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -45,7 +45,15 @@ final class CommunityServiceEntry extends Model
         'status',
         'admin_notes',
     ];
-    
+
+    /**
+     * Get the scholarship application that owns the community service entry.
+     */
+    public function scholarshipApplication(): BelongsTo
+    {
+        return $this->belongsTo(ScholarshipApplication::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -58,13 +66,5 @@ final class CommunityServiceEntry extends Model
             'photos' => 'array',
             'hours_completed' => 'decimal:2',
         ];
-    }
-    
-    /**
-     * Get the scholarship application that owns the community service entry.
-     */
-    public function scholarshipApplication(): BelongsTo
-    {
-        return $this->belongsTo(ScholarshipApplication::class);
     }
 }

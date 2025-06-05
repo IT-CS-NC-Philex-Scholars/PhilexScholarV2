@@ -2,16 +2,16 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Middleware\HandleSocialitePlusProviders;
-use App\Http\Controllers\Auth\RegisteredUserController;
-use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\ConfirmablePasswordController;
-use App\Http\Controllers\Auth\AuthenticatedSessionController;
-use App\Http\Controllers\Auth\EmailVerificationPromptController;
-use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
     // Route::get('register', [RegisteredUserController::class, 'create'])
@@ -24,13 +24,13 @@ Route::middleware('guest')->group(function () {
 
     Route::post('login', [AuthenticatedSessionController::class, 'store']);
 
-Route::get('register', [RegisteredUserController::class, 'create'])
-    ->middleware(HandleSocialitePlusProviders::class)
-    ->name('register');
+    Route::get('register', [RegisteredUserController::class, 'create'])
+        ->middleware(HandleSocialitePlusProviders::class)
+        ->name('register');
 
-Route::get('login', [AuthenticatedSessionController::class, 'create'])
-    ->middleware(HandleSocialitePlusProviders::class)
-    ->name('login');
+    Route::get('login', [AuthenticatedSessionController::class, 'create'])
+        ->middleware(HandleSocialitePlusProviders::class)
+        ->name('login');
 
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');

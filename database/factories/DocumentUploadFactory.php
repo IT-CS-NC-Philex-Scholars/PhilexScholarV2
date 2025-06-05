@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
-use App\Models\ScholarshipApplication;
 use App\Models\DocumentRequirement;
+use App\Models\ScholarshipApplication;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\DocumentUpload>
  */
-class DocumentUploadFactory extends Factory
+final class DocumentUploadFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -30,12 +32,12 @@ class DocumentUploadFactory extends Factory
 
         $extensions = ['pdf', 'doc', 'docx', 'jpg', 'png'];
         $extension = $this->faker->randomElement($extensions);
-        $filename = $this->faker->word() . '.' . $extension;
+        $filename = $this->faker->word().'.'.$extension;
 
         return [
             'scholarship_application_id' => ScholarshipApplication::factory(),
             'document_requirement_id' => DocumentRequirement::factory(),
-            'file_path' => 'uploads/documents/' . $filename,
+            'file_path' => 'uploads/documents/'.$filename,
             'original_filename' => $filename,
             'status' => $this->faker->randomElement($statuses),
             'rejection_reason' => $this->faker->optional(0.3)->sentence(),

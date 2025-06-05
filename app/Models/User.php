@@ -43,7 +43,8 @@ final class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
-  use HasPushSubscriptions;
+
+    use HasPushSubscriptions;
     use Notifiable;
 
     /**
@@ -69,6 +70,14 @@ final class User extends Authenticatable implements MustVerifyEmail
     ];
 
     /**
+     * Get the student profile associated with the user.
+     */
+    public function studentProfile()
+    {
+        return $this->hasOne(StudentProfile::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -80,13 +89,5 @@ final class User extends Authenticatable implements MustVerifyEmail
             'password' => 'hashed',
             'role' => 'string',
         ];
-    }
-
-    /**
-     * Get the student profile associated with the user.
-     */
-    public function studentProfile()
-    {
-        return $this->hasOne(StudentProfile::class);
     }
 }

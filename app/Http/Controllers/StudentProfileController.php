@@ -4,19 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Models\StudentProfile;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
-use Illuminate\Http\Request;
 
 final class StudentProfileController extends Controller
 {
-
-
     /**
      * Display the student profile form.
      */
@@ -47,7 +43,7 @@ final class StudentProfileController extends Controller
         ]);
 
         $user = Auth::user();
-        
+
         if ($user->studentProfile) {
             $user->studentProfile->update($validated);
         } else {
@@ -56,7 +52,7 @@ final class StudentProfileController extends Controller
 
         return Redirect::route('student.profile.edit')->with('success', 'Profile updated successfully.');
     }
-    
+
     /**
      * Display the student dashboard.
      */
@@ -64,16 +60,16 @@ final class StudentProfileController extends Controller
     {
         $user = Auth::user();
         $profile = $user->studentProfile;
-        
+
         $applications = [];
-        
+
         if ($profile) {
             $applications = $profile->scholarshipApplications()
                 ->with(['scholarshipProgram'])
                 ->latest()
                 ->get();
         }
-        
+
         return Inertia::render('Student/Dashboard', [
             'hasProfile' => $profile !== null,
             'applications' => $applications,

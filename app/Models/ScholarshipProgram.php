@@ -25,13 +25,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $active
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ScholarshipApplication> $scholarshipApplications
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DocumentRequirement> $documentRequirements
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, ScholarshipApplication> $scholarshipApplications
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, DocumentRequirement> $documentRequirements
  */
 final class ScholarshipProgram extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -52,7 +52,35 @@ final class ScholarshipProgram extends Model
         'community_service_days',
         'active',
     ];
-    
+
+    /**
+     * Get the scholarship applications for the scholarship program.
+     */
+    public function scholarshipApplications(): HasMany
+    {
+        return $this->hasMany(ScholarshipApplication::class);
+    }
+
+    /**
+     * Get the document requirements for the scholarship program.
+     */
+    public function documentRequirements(): HasMany
+    {
+        return $this->hasMany(DocumentRequirement::class);
+    }
+
+    /**
+     * Get the remaining slots for the scholarship program.
+     */
+    public function getRemainingSlots(): int
+    {
+        $usedSlots = $this->scholarshipApplications()
+            ->whereIn('status', ['approved', 'enrolled'])
+            ->count();
+
+        return $this->available_slots - $usedSlots;
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -67,33 +95,5 @@ final class ScholarshipProgram extends Model
             'application_deadline' => 'date',
             'active' => 'boolean',
         ];
-    }
-    
-    /**
-     * Get the scholarship applications for the scholarship program.
-     */
-    public function scholarshipApplications(): HasMany
-    {
-        return $this->hasMany(ScholarshipApplication::class);
-    }
-    
-    /**
-     * Get the document requirements for the scholarship program.
-     */
-    public function documentRequirements(): HasMany
-    {
-        return $this->hasMany(DocumentRequirement::class);
-    }
-    
-    /**
-     * Get the remaining slots for the scholarship program.
-     */
-    public function getRemainingSlots(): int
-    {
-        $usedSlots = $this->scholarshipApplications()
-            ->whereIn('status', ['approved', 'enrolled'])
-            ->count();
-            
-        return $this->available_slots - $usedSlots;
     }
 }

@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ScholarshipProgram;
-use App\Models\DocumentRequirement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -20,14 +19,13 @@ final class ScholarshipController extends Controller
      */
     public function index(): Response
     {
-        $scholarships = ScholarshipProgram::withCount(['scholarshipApplications'])
+        $scholarships = \App\Models\ScholarshipProgram::query()->withCount(['scholarshipApplications'])
             ->latest()
             ->get()
-            ->map(function ($scholarship) {
+            ->map(fn($scholarship) =>
                 // Optional: Transform for index page if needed, though not strictly required by the prompt
                 // For now, keeping it simple for index.
-                return $scholarship;
-            });
+                $scholarship);
 
         return Inertia::render('Admin/Scholarship/Index', [
             'scholarships' => $scholarships,
@@ -66,7 +64,7 @@ final class ScholarshipController extends Controller
             'document_requirements.*.is_required' => ['required_with:document_requirements', 'boolean'],
         ]);
 
-        $scholarship = ScholarshipProgram::create([
+        $scholarship = \App\Models\ScholarshipProgram::query()->create([
             'name' => $validated['name'],
             'description' => $validated['description'],
             'total_budget' => $validated['total_budget'],
@@ -101,7 +99,7 @@ final class ScholarshipController extends Controller
             'documentRequirements',
             'scholarshipApplications.studentProfile.user',
             'scholarshipApplications.documentUploads', // Added for completeness if needed on Show page
-            'scholarshipApplications.disbursements'    // Added for completeness
+            'scholarshipApplications.disbursements',    // Added for completeness
         ]);
 
         // Transform data to camelCase
@@ -120,26 +118,28 @@ final class ScholarshipController extends Controller
                     // User within studentProfile should be fine as it's typically an object of attributes
                     // If user itself had snake_case keys needing transformation, do it here.
                 }
+
                 if (isset($application['document_uploads'])) {
                     $application['documentUploads'] = $application['document_uploads'];
                     unset($application['document_uploads']);
                 }
+
                 if (isset($application['disbursements'])) {
-                    $application['disbursements'] = $application['disbursements'];
                     unset($application['disbursements']);
                 }
+
                 // If ScholarshipProgram is nested under application and needs casing:
                 if (isset($application['scholarship_program'])) {
                     $application['scholarshipProgram'] = $application['scholarship_program'];
                     unset($application['scholarship_program']);
                 }
+
                 return $application;
             }, $scholarshipData['scholarship_applications']);
             unset($scholarshipData['scholarship_applications']);
         } else {
             $scholarshipData['scholarshipApplications'] = [];
         }
-
 
         return Inertia::render('Admin/Scholarship/Show', [
             'scholarship' => $scholarshipData,
@@ -158,7 +158,6 @@ final class ScholarshipController extends Controller
             $scholarshipData['documentRequirements'] = $scholarshipData['document_requirements'];
             unset($scholarshipData['document_requirements']);
         }
-
 
         return Inertia::render('Admin/Scholarship/Edit', [
             'scholarship' => $scholarshipData,

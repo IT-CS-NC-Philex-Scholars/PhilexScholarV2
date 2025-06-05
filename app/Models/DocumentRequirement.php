@@ -17,13 +17,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property bool $is_required
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\ScholarshipProgram $scholarshipProgram
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\DocumentUpload> $documentUploads
+ * @property-read ScholarshipProgram $scholarshipProgram
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, DocumentUpload> $documentUploads
  */
 final class DocumentRequirement extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -35,7 +35,23 @@ final class DocumentRequirement extends Model
         'description',
         'is_required',
     ];
-    
+
+    /**
+     * Get the scholarship program that owns the document requirement.
+     */
+    public function scholarshipProgram(): BelongsTo
+    {
+        return $this->belongsTo(ScholarshipProgram::class);
+    }
+
+    /**
+     * Get the document uploads for the document requirement.
+     */
+    public function documentUploads(): HasMany
+    {
+        return $this->hasMany(DocumentUpload::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -46,21 +62,5 @@ final class DocumentRequirement extends Model
         return [
             'is_required' => 'boolean',
         ];
-    }
-    
-    /**
-     * Get the scholarship program that owns the document requirement.
-     */
-    public function scholarshipProgram(): BelongsTo
-    {
-        return $this->belongsTo(ScholarshipProgram::class);
-    }
-    
-    /**
-     * Get the document uploads for the document requirement.
-     */
-    public function documentUploads(): HasMany
-    {
-        return $this->hasMany(DocumentUpload::class);
     }
 }

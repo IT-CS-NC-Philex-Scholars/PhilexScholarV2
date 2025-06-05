@@ -20,13 +20,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $reviewed_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\ScholarshipApplication $scholarshipApplication
- * @property-read \App\Models\DocumentRequirement $documentRequirement
+ * @property-read ScholarshipApplication $scholarshipApplication
+ * @property-read DocumentRequirement $documentRequirement
  */
 final class DocumentUpload extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -42,7 +42,23 @@ final class DocumentUpload extends Model
         'uploaded_at',
         'reviewed_at',
     ];
-    
+
+    /**
+     * Get the scholarship application that owns the document upload.
+     */
+    public function scholarshipApplication(): BelongsTo
+    {
+        return $this->belongsTo(ScholarshipApplication::class);
+    }
+
+    /**
+     * Get the document requirement that owns the document upload.
+     */
+    public function documentRequirement(): BelongsTo
+    {
+        return $this->belongsTo(DocumentRequirement::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -54,21 +70,5 @@ final class DocumentUpload extends Model
             'uploaded_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];
-    }
-    
-    /**
-     * Get the scholarship application that owns the document upload.
-     */
-    public function scholarshipApplication(): BelongsTo
-    {
-        return $this->belongsTo(ScholarshipApplication::class);
-    }
-    
-    /**
-     * Get the document requirement that owns the document upload.
-     */
-    public function documentRequirement(): BelongsTo
-    {
-        return $this->belongsTo(DocumentRequirement::class);
     }
 }

@@ -20,8 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->encryptCookies(except: ['appearance']);
 
         $middleware->alias([
-            'student' => \App\Http\Middleware\EnsureUserIsStudent::class,
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'student' => App\Http\Middleware\EnsureUserIsStudent::class,
+            'admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
 
         $middleware->web(append: [

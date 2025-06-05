@@ -18,11 +18,11 @@ return new class extends Migration
             $table->foreignId('scholarship_application_id')->constrained()->cascadeOnDelete();
             $table->decimal('amount', 8, 2);
             $table->enum('status', [
-                'pending', 
-                'processing', 
-                'disbursed', 
+                'pending',
+                'processing',
+                'disbursed',
                 'on_hold',
-                'cancelled'
+                'cancelled',
             ])->default('pending');
             $table->string('payment_method')->nullable();
             $table->string('reference_number')->nullable();

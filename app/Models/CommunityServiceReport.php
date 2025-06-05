@@ -19,12 +19,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property \Illuminate\Support\Carbon|null $reviewed_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\ScholarshipApplication $scholarshipApplication
+ * @property-read ScholarshipApplication $scholarshipApplication
  */
 final class CommunityServiceReport extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -42,7 +42,15 @@ final class CommunityServiceReport extends Model
         'submitted_at',
         'reviewed_at',
     ];
-    
+
+    /**
+     * Get the scholarship application that owns the community service report.
+     */
+    public function scholarshipApplication(): BelongsTo
+    {
+        return $this->belongsTo(ScholarshipApplication::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -56,13 +64,5 @@ final class CommunityServiceReport extends Model
             'submitted_at' => 'datetime',
             'reviewed_at' => 'datetime',
         ];
-    }
-    
-    /**
-     * Get the scholarship application that owns the community service report.
-     */
-    public function scholarshipApplication(): BelongsTo
-    {
-        return $this->belongsTo(ScholarshipApplication::class);
     }
 }

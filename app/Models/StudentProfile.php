@@ -22,13 +22,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $school_name
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
- * @property-read \App\Models\User $user
- * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\ScholarshipApplication> $scholarshipApplications
+ * @property-read User $user
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, ScholarshipApplication> $scholarshipApplications
  */
 final class StudentProfile extends Model
 {
     use HasFactory;
-    
+
     /**
      * The attributes that are mass assignable.
      *
@@ -47,7 +47,23 @@ final class StudentProfile extends Model
         'student_id',
         'gpa',
     ];
-    
+
+    /**
+     * Get the user that owns the student profile.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the scholarship applications for the student profile.
+     */
+    public function scholarshipApplications(): HasMany
+    {
+        return $this->hasMany(ScholarshipApplication::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -60,21 +76,5 @@ final class StudentProfile extends Model
             'student_id' => 'string',
             'gpa' => 'float',
         ];
-    }
-    
-    /**
-     * Get the user that owns the student profile.
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-    
-    /**
-     * Get the scholarship applications for the student profile.
-     */
-    public function scholarshipApplications(): HasMany
-    {
-        return $this->hasMany(ScholarshipApplication::class);
     }
 }

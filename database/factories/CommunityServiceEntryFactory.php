@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\CommunityServiceEntry>
  */
-class CommunityServiceEntryFactory extends Factory
+final class CommunityServiceEntryFactory extends Factory
 {
     protected $model = CommunityServiceEntry::class;
 
@@ -44,7 +44,7 @@ class CommunityServiceEntryFactory extends Factory
 
     public function approved(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'status' => 'approved',
             'admin_notes' => $this->faker->sentence(),
         ]);
@@ -52,7 +52,7 @@ class CommunityServiceEntryFactory extends Factory
 
     public function rejected(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'status' => 'rejected',
             'admin_notes' => $this->faker->sentence(),
         ]);
@@ -60,14 +60,14 @@ class CommunityServiceEntryFactory extends Factory
 
     public function completed(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'status' => 'completed',
         ]);
     }
 
     public function inProgress(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'status' => 'in_progress',
             'time_out' => null,
             'hours_completed' => null,

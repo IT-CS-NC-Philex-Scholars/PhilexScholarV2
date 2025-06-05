@@ -14,15 +14,17 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', function () {
         $user = Auth::user();
-        
+
         if ($user->role === 'student') {
             return redirect()->route('student.dashboard');
-        } else if ($user->role === 'admin') {
-            return redirect()->route('admin.dashboard');
-        } else {
-            // Fallback to default dashboard
-            return Inertia::render('dashboard');
         }
+        if ($user->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+
+        // Fallback to default dashboard
+        return Inertia::render('dashboard');
+
     })->name('dashboard');
 
     // Notification routes
@@ -41,11 +43,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/test-notification', function () {
         $user = Auth::user();
-        $user->notify(new \App\Notifications\DatabaseNotification(
+        $user->notify(new App\Notifications\DatabaseNotification(
             request('title', 'Test Notification'),
             request('message', 'This is a test'),
             request('type', 'info')
         ));
+
         return back()->with('success', 'Test notification sent!');
     })->name('test-notification');
 });

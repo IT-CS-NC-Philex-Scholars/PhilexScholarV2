@@ -1,10 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-class NotificationController extends Controller
+final class NotificationController extends Controller
 {
     public function index(Request $request)
     {
@@ -13,17 +15,15 @@ class NotificationController extends Controller
             ->latest()
             ->take(20)
             ->get()
-            ->map(function ($notification) {
-                return [
-                    'id' => $notification->id,
-                    'type' => $notification->type,
-                    'title' => $notification->data['title'] ?? '',
-                    'message' => $notification->data['message'] ?? '',
-                    'action_url' => $notification->data['action_url'] ?? null,
-                    'read_at' => $notification->read_at,
-                    'created_at' => $notification->created_at,
-                ];
-            });
+            ->map(fn($notification): array => [
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'title' => $notification->data['title'] ?? '',
+                'message' => $notification->data['message'] ?? '',
+                'action_url' => $notification->data['action_url'] ?? null,
+                'read_at' => $notification->read_at,
+                'created_at' => $notification->created_at,
+            ]);
 
         return response()->json($notifications);
     }
@@ -37,6 +37,7 @@ class NotificationController extends Controller
 
         if ($notification) {
             $notification->markAsRead();
+
             return back()->with('success', 'Notification marked as read.');
         }
 
@@ -59,6 +60,7 @@ class NotificationController extends Controller
 
         if ($notification) {
             $notification->delete();
+
             return back()->with('success', 'Notification cleared.');
         }
 

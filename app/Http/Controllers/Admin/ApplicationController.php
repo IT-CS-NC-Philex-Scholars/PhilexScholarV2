@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\ScholarshipApplication;
-use App\Models\DocumentUpload;
 use App\Models\CommunityServiceReport;
 use App\Models\Disbursement;
+use App\Models\DocumentUpload;
+use App\Models\ScholarshipApplication;
 use App\Notifications\DatabaseNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Notification;
-use Symfony\Component\HttpFoundation\StreamedResponse;
-use Illuminate\Http\Response as IlluminateResponse;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 
@@ -40,9 +38,7 @@ final class ApplicationController extends Controller
         $applicationsPaginator = $query->latest()->paginate(15)->withQueryString();
 
         // Transform keys for the paginated collection
-        $applicationsPaginator->through(function ($application) {
-            return $this->transformApplicationData($application);
-        });
+        $applicationsPaginator->through(fn($application): array => $this->transformApplicationData($application));
 
         return Inertia::render('Admin/Application/Index', [
             'applications' => $applicationsPaginator,
@@ -68,59 +64,6 @@ final class ApplicationController extends Controller
         return Inertia::render('Admin/Application/Show', [
             'application' => $transformedApplication,
         ]);
-    }
-
-    private function transformApplicationData(ScholarshipApplication $application): array
-    {
-        $data = $application->toArray();
-
-        if (isset($data['student_profile'])) {
-            $data['studentProfile'] = $data['student_profile'];
-            unset($data['student_profile']);
-        }
-
-        if (isset($data['scholarship_program'])) {
-            $data['scholarshipProgram'] = $data['scholarship_program'];
-            if (isset($data['scholarshipProgram']['document_requirements'])) {
-                $data['scholarshipProgram']['documentRequirements'] = $data['scholarshipProgram']['document_requirements'];
-                unset($data['scholarshipProgram']['document_requirements']);
-            }
-            unset($data['scholarship_program']);
-        }
-
-        if (isset($data['document_uploads'])) {
-            $data['documentUploads'] = array_map(function ($upload) {
-                if (isset($upload['document_requirement'])) {
-                    $upload['documentRequirement'] = $upload['document_requirement'];
-                    unset($upload['document_requirement']);
-                }
-                return $upload;
-            }, $data['document_uploads']);
-            unset($data['document_uploads']);
-        } else {
-            $data['documentUploads'] = [];
-        }
-
-        if (isset($data['community_service_reports'])) {
-            $data['communityServiceReports'] = array_map(function ($report) {
-                // If tracked, load entries
-                if ($report['report_type'] === 'tracked') {
-                    $entries = \App\Models\CommunityServiceEntry::where('scholarship_application_id', $report['scholarship_application_id'])
-                        ->orderBy('service_date', 'desc')
-                        ->orderBy('time_in', 'desc')
-                        ->get();
-                    $report['entries'] = $entries->toArray();
-                } else {
-                    $report['entries'] = [];
-                }
-                return $report;
-            }, $data['community_service_reports']);
-            unset($data['community_service_reports']);
-        } else {
-            $data['communityServiceReports'] = [];
-        }
-
-        return $data;
     }
 
     /**
@@ -201,10 +144,10 @@ final class ApplicationController extends Controller
                 $application->update(['status' => 'documents_approved']);
                 // Send notification for application status change
                 $this->sendApplicationStatusNotification($application, 'documents_approved');
-            } elseif (!$allRequiredDocumentsApproved && $application->status === 'documents_under_review' && $document->status !== 'approved' && $document->status !== 'pending_review') {
-                 $application->update(['status' => 'documents_pending']);
-                 // Send notification for application status change
-                 $this->sendApplicationStatusNotification($application, 'documents_pending');
+            } elseif (! $allRequiredDocumentsApproved && $application->status === 'documents_under_review' && $document->status !== 'approved' && $document->status !== 'pending_review') {
+                $application->update(['status' => 'documents_pending']);
+                // Send notification for application status change
+                $this->sendApplicationStatusNotification($application, 'documents_pending');
             }
         }
 
@@ -222,9 +165,7 @@ final class ApplicationController extends Controller
         // Assuming $documentUpload->file_path is relative to storage/app/
         // e.g., 'private_uploads/scholarship_1/document.pdf'
         // If using a custom private disk, use Storage::disk('your_disk_name')->...
-        if (!Storage::disk('local')->exists($documentUpload->file_path)) {
-            abort(404, 'File not found.');
-        }
+        abort_unless(Storage::disk('local')->exists($documentUpload->file_path), 404, 'File not found.');
 
         $filePathOnDisk = Storage::disk('local')->path($documentUpload->file_path);
         $filename = $documentUpload->original_filename ?? basename($documentUpload->file_path);
@@ -233,7 +174,7 @@ final class ApplicationController extends Controller
         // For inline viewing (like in an iframe or new tab for PDFs/images)
         return response()->file($filePathOnDisk, [
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
         ]);
 
         // To force download for all types:
@@ -306,13 +247,69 @@ final class ApplicationController extends Controller
         return Redirect::back()->with('success', 'Disbursement updated successfully.');
     }
 
+    private function transformApplicationData(ScholarshipApplication $application): array
+    {
+        $data = $application->toArray();
+
+        if (isset($data['student_profile'])) {
+            $data['studentProfile'] = $data['student_profile'];
+            unset($data['student_profile']);
+        }
+
+        if (isset($data['scholarship_program'])) {
+            $data['scholarshipProgram'] = $data['scholarship_program'];
+            if (isset($data['scholarshipProgram']['document_requirements'])) {
+                $data['scholarshipProgram']['documentRequirements'] = $data['scholarshipProgram']['document_requirements'];
+                unset($data['scholarshipProgram']['document_requirements']);
+            }
+
+            unset($data['scholarship_program']);
+        }
+
+        if (isset($data['document_uploads'])) {
+            $data['documentUploads'] = array_map(function ($upload) {
+                if (isset($upload['document_requirement'])) {
+                    $upload['documentRequirement'] = $upload['document_requirement'];
+                    unset($upload['document_requirement']);
+                }
+
+                return $upload;
+            }, $data['document_uploads']);
+            unset($data['document_uploads']);
+        } else {
+            $data['documentUploads'] = [];
+        }
+
+        if (isset($data['community_service_reports'])) {
+            $data['communityServiceReports'] = array_map(function (array $report) {
+                // If tracked, load entries
+                if ($report['report_type'] === 'tracked') {
+                    $entries = \App\Models\CommunityServiceEntry::query()->where('scholarship_application_id', $report['scholarship_application_id'])
+                        ->orderBy('service_date', 'desc')
+                        ->orderBy('time_in', 'desc')
+                        ->get();
+                    $report['entries'] = $entries->toArray();
+                } else {
+                    $report['entries'] = [];
+                }
+
+                return $report;
+            }, $data['community_service_reports']);
+            unset($data['community_service_reports']);
+        } else {
+            $data['communityServiceReports'] = [];
+        }
+
+        return $data;
+    }
+
     /**
      * Send notification to student when application status changes.
      */
     private function sendApplicationStatusNotification(ScholarshipApplication $application, string $newStatus): void
     {
         $student = $application->studentProfile->user;
-        
+
         $statusMessages = [
             'pending' => 'Your scholarship application is now pending review.',
             'documents_under_review' => 'Your documents are now under review.',
@@ -331,7 +328,7 @@ final class ApplicationController extends Controller
         $notification = new DatabaseNotification(
             title: $title,
             message: $message,
-            type: in_array($newStatus, ['approved', 'documents_approved', 'disbursement_processed']) ? 'success' : 
+            type: in_array($newStatus, ['approved', 'documents_approved', 'disbursement_processed']) ? 'success' :
                   (in_array($newStatus, ['rejected', 'cancelled']) ? 'error' : 'info'),
             actionUrl: route('student.applications.show', $application->id)
         );
@@ -345,9 +342,9 @@ final class ApplicationController extends Controller
     private function sendDocumentStatusNotification(ScholarshipApplication $application, DocumentUpload $document, string $newStatus): void
     {
         $student = $application->studentProfile->user;
-        
+
         $documentName = $document->documentRequirement->name ?? 'Document';
-        
+
         $statusMessages = [
             'approved' => "Your {$documentName} has been approved!",
             'rejected_invalid' => "Your {$documentName} was rejected - invalid document.",
@@ -359,7 +356,7 @@ final class ApplicationController extends Controller
         ];
 
         $message = $statusMessages[$newStatus] ?? "Your {$documentName} status has been updated.";
-        
+
         if ($document->rejection_reason) {
             $message .= " Reason: {$document->rejection_reason}";
         }
@@ -369,7 +366,7 @@ final class ApplicationController extends Controller
         $notification = new DatabaseNotification(
             title: $title,
             message: $message,
-            type: $newStatus === 'approved' ? 'success' : 
+            type: $newStatus === 'approved' ? 'success' :
                   (str_starts_with($newStatus, 'rejected') ? 'error' : 'info'),
             actionUrl: route('student.applications.show', $application->id)
         );

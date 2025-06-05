@@ -18,9 +18,9 @@ return new class extends Migration
             $table->foreignId('student_profile_id')->constrained()->cascadeOnDelete();
             $table->foreignId('scholarship_program_id')->constrained()->cascadeOnDelete();
             $table->enum('status', [
-                'draft', 
-                'submitted', 
-                'documents_pending', 
+                'draft',
+                'submitted',
+                'documents_pending',
                 'documents_under_review',
                 'documents_approved',
                 'documents_rejected',
@@ -31,7 +31,7 @@ return new class extends Migration
                 'disbursement_pending',
                 'disbursement_processed',
                 'completed',
-                'rejected'
+                'rejected',
             ])->default('draft');
             $table->text('admin_notes')->nullable();
             $table->timestamp('submitted_at')->nullable();

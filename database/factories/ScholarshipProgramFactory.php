@@ -1,14 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
-use App\Models\ScholarshipProgram;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ScholarshipProgram>
  */
-class ScholarshipProgramFactory extends Factory
+final class ScholarshipProgramFactory extends Factory
 {
     /**
      * Define the model's default state.
@@ -19,14 +20,14 @@ class ScholarshipProgramFactory extends Factory
     {
         $perStudentBudget = $this->faker->randomElement([1000, 2000, 2500, 3000, 5000, 10000]);
         $totalSlots = $this->faker->numberBetween(5, 50);
-        
+
         $semesters = ['Fall', 'Spring', 'Summer'];
         $currentYear = date('Y');
         $years = [$currentYear, $currentYear + 1];
-        $academicYear = $this->faker->randomElement($years) . '-' . ($this->faker->randomElement($years) + 1);
-        
+        $academicYear = $this->faker->randomElement($years).'-'.($this->faker->randomElement($years) + 1);
+
         return [
-            'name' => $this->faker->words(3, true) . ' Scholarship',
+            'name' => $this->faker->words(3, true).' Scholarship',
             'description' => $this->faker->paragraph(),
             'total_budget' => $perStudentBudget * $totalSlots,
             'per_student_budget' => $perStudentBudget,
@@ -41,23 +42,23 @@ class ScholarshipProgramFactory extends Factory
             'active' => $this->faker->boolean(80),
         ];
     }
-    
+
     /**
      * Set the scholarship program to active.
      */
     public function active(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'active' => true,
         ]);
     }
-    
+
     /**
      * Set the scholarship program to inactive.
      */
     public function inactive(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn (array $attributes): array => [
             'active' => false,
         ]);
     }

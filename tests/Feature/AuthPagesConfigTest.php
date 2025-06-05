@@ -1,17 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Facades\Config;
 use Inertia\Testing\AssertableInertia as Assert;
 
 // --- Test Scenario 1: Only Facebook Login (Credentials Disabled) ---
-describe('Auth Pages: Only Facebook Login (Credentials Disabled)', function () {
+describe('Auth Pages: Only Facebook Login (Credentials Disabled)', function (): void {
     $processedFacebookProvider = [
         'name' => 'Facebook',
         'icon' => 'FacebookIcon',
         'branded' => false,
     ];
 
-    beforeEach(function () {
+    beforeEach(function (): void {
         Config::set('socialiteplus', [
             'button_text' => 'Login with {provider}',
             'disable_credentials_login' => true,
@@ -23,12 +25,12 @@ describe('Auth Pages: Only Facebook Login (Credentials Disabled)', function () {
         ]);
     });
 
-    test('login page correctly configured for Facebook-only login', function () use ($processedFacebookProvider) {
+    test('login page correctly configured for Facebook-only login', function () use ($processedFacebookProvider): void {
         $this->get(route('login'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/login-social')
-                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider) {
+                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider): void {
                     $config->where('button_text', 'Login with {provider}')
                         ->where('disable_credentials_login', true)
                         ->where('providers', [$processedFacebookProvider])
@@ -39,12 +41,12 @@ describe('Auth Pages: Only Facebook Login (Credentials Disabled)', function () {
             );
     });
 
-    test('register page correctly configured for Facebook-only login', function () use ($processedFacebookProvider) {
+    test('register page correctly configured for Facebook-only login', function () use ($processedFacebookProvider): void {
         $this->get(route('register'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/register-social')
-                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider) {
+                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider): void {
                     $config->where('button_text', 'Login with {provider}')
                         ->where('disable_credentials_login', true)
                         ->where('providers', [$processedFacebookProvider])
@@ -56,7 +58,7 @@ describe('Auth Pages: Only Facebook Login (Credentials Disabled)', function () {
 });
 
 // --- Test Scenario 2: Credential Login AND Multiple Social Logins Enabled ---
-describe('Auth Pages: Credentials and Multiple Social Logins Enabled', function () {
+describe('Auth Pages: Credentials and Multiple Social Logins Enabled', function (): void {
     $processedFacebookProvider = [
         'name' => 'Facebook',
         'icon' => 'FacebookIcon',
@@ -68,7 +70,7 @@ describe('Auth Pages: Credentials and Multiple Social Logins Enabled', function 
         'branded' => true,
     ];
 
-    beforeEach(function () {
+    beforeEach(function (): void {
         Config::set('socialiteplus', [
             'button_text' => 'Sign in via {provider}',
             'disable_credentials_login' => false,
@@ -80,12 +82,12 @@ describe('Auth Pages: Credentials and Multiple Social Logins Enabled', function 
         ]);
     });
 
-    test('login page shows credentials and active social logins', function () use ($processedFacebookProvider, $processedGithubProvider) {
+    test('login page shows credentials and active social logins', function () use ($processedFacebookProvider, $processedGithubProvider): void {
         $this->get(route('login'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/login-social')
-                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider, $processedGithubProvider) {
+                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider, $processedGithubProvider): void {
                     $config->where('button_text', 'Sign in via {provider}')
                         ->where('disable_credentials_login', false)
                         ->where('providers', [
@@ -98,12 +100,12 @@ describe('Auth Pages: Credentials and Multiple Social Logins Enabled', function 
             );
     });
 
-    test('register page shows credentials and active social logins', function () use ($processedFacebookProvider, $processedGithubProvider) {
+    test('register page shows credentials and active social logins', function () use ($processedFacebookProvider, $processedGithubProvider): void {
         $this->get(route('register'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/register-social')
-                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider, $processedGithubProvider) {
+                ->has('providersConfig', function (Assert $config) use ($processedFacebookProvider, $processedGithubProvider): void {
                     $config->where('button_text', 'Sign in via {provider}')
                         ->where('disable_credentials_login', false)
                         ->where('providers', [
@@ -118,8 +120,8 @@ describe('Auth Pages: Credentials and Multiple Social Logins Enabled', function 
 });
 
 // --- Test Scenario 3: Credentials Disabled AND NO Social Providers Active ---
-describe('Auth Pages: Credentials Disabled and No Social Providers Active', function () {
-    beforeEach(function () {
+describe('Auth Pages: Credentials Disabled and No Social Providers Active', function (): void {
+    beforeEach(function (): void {
         Config::set('socialiteplus', [
             'button_text' => 'Use {provider}',
             'disable_credentials_login' => true,
@@ -130,12 +132,12 @@ describe('Auth Pages: Credentials Disabled and No Social Providers Active', func
         ]);
     });
 
-    test('login page correctly configured when no methods available', function () {
+    test('login page correctly configured when no methods available', function (): void {
         $this->get(route('login'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/login-social')
-                ->has('providersConfig', function (Assert $config) {
+                ->has('providersConfig', function (Assert $config): void {
                     $config->where('button_text', 'Use {provider}')
                         ->where('disable_credentials_login', true)
                         ->where('providers', [])
@@ -145,12 +147,12 @@ describe('Auth Pages: Credentials Disabled and No Social Providers Active', func
             );
     });
 
-    test('register page correctly configured when no methods available', function () {
+    test('register page correctly configured when no methods available', function (): void {
         $this->get(route('register'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/register-social')
-                ->has('providersConfig', function (Assert $config) {
+                ->has('providersConfig', function (Assert $config): void {
                     $config->where('button_text', 'Use {provider}')
                         ->where('disable_credentials_login', true)
                         ->where('providers', [])
@@ -162,8 +164,8 @@ describe('Auth Pages: Credentials Disabled and No Social Providers Active', func
 });
 
 // --- Test Scenario 4: Only Credential Login (Socials Inactive, Credentials Enabled) ---
-describe('Auth Pages: Only Credential Login (Socials Inactive)', function () {
-    beforeEach(function () {
+describe('Auth Pages: Only Credential Login (Socials Inactive)', function (): void {
+    beforeEach(function (): void {
         Config::set('socialiteplus', [
             'button_text' => '{provider} Login',
             'disable_credentials_login' => false,
@@ -173,12 +175,12 @@ describe('Auth Pages: Only Credential Login (Socials Inactive)', function () {
         ]);
     });
 
-    test('login page correctly configured for credentials-only', function () {
+    test('login page correctly configured for credentials-only', function (): void {
         $this->get(route('login'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/login-social')
-                ->has('providersConfig', function (Assert $config) {
+                ->has('providersConfig', function (Assert $config): void {
                     $config->where('button_text', '{provider} Login')
                         ->where('disable_credentials_login', false)
                         ->where('providers', [])
@@ -188,12 +190,12 @@ describe('Auth Pages: Only Credential Login (Socials Inactive)', function () {
             );
     });
 
-    test('register page correctly configured for credentials-only', function () {
+    test('register page correctly configured for credentials-only', function (): void {
         $this->get(route('register'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/register-social')
-                ->has('providersConfig', function (Assert $config) {
+                ->has('providersConfig', function (Assert $config): void {
                     $config->where('button_text', '{provider} Login')
                         ->where('disable_credentials_login', false)
                         ->where('providers', [])
@@ -205,17 +207,17 @@ describe('Auth Pages: Only Credential Login (Socials Inactive)', function () {
 });
 
 // --- Test Scenario 5: SocialitePlus Config Missing/Null (Graceful Degradation) ---
-describe('Auth Pages: SocialitePlus Config Missing/Null', function () {
-    beforeEach(function () {
+describe('Auth Pages: SocialitePlus Config Missing/Null', function (): void {
+    beforeEach(function (): void {
         Config::set('socialiteplus', null); // Simulate config not published or returning null
     });
 
-    test('login page handles missing socialiteplus config gracefully', function () {
+    test('login page handles missing socialiteplus config gracefully', function (): void {
         $this->get(route('login'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/login-social')
-                ->has('providersConfig', function (Assert $config) {
+                ->has('providersConfig', function (Assert $config): void {
                     $config->where('button_text', '{provider}') // Default from middleware
                         ->where('disable_credentials_login', false) // Default from middleware
                         ->where('providers', [])
@@ -225,12 +227,12 @@ describe('Auth Pages: SocialitePlus Config Missing/Null', function () {
             );
     });
 
-    test('register page handles missing socialiteplus config gracefully', function () {
+    test('register page handles missing socialiteplus config gracefully', function (): void {
         $this->get(route('register'))
             ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
+            ->assertInertia(fn (Assert $page): \Illuminate\Testing\Fluent\AssertableJson => $page
                 ->component('auth/register-social')
-                ->has('providersConfig', function (Assert $config) {
+                ->has('providersConfig', function (Assert $config): void {
                     $config->where('button_text', '{provider}') // Default from middleware
                         ->where('disable_credentials_login', false) // Default from middleware
                         ->where('providers', [])

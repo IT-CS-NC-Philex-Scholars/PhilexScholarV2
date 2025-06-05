@@ -2,11 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Models\User;
 use App\Models\StudentProfile;
-use App\Models\ScholarshipApplication;
+use App\Models\User;
 
-test('admin can view students list', function () {
+test('admin can view students list', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -35,7 +34,7 @@ test('admin can view students list', function () {
     );
 });
 
-test('admin can view a specific student', function () {
+test('admin can view a specific student', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',
@@ -65,7 +64,7 @@ test('admin can view a specific student', function () {
     );
 });
 
-test('admin can search for students', function () {
+test('admin can search for students', function (): void {
     // Create an admin user
     $admin = User::factory()->create([
         'role' => 'admin',

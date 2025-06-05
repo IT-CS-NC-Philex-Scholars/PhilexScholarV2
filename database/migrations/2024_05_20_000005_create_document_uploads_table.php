@@ -20,13 +20,13 @@ return new class extends Migration
             $table->string('file_path');
             $table->string('original_filename');
             $table->enum('status', [
-                'pending_review', 
-                'approved', 
-                'rejected_invalid', 
-                'rejected_incomplete', 
+                'pending_review',
+                'approved',
+                'rejected_invalid',
+                'rejected_incomplete',
                 'rejected_incorrect_format',
                 'rejected_unreadable',
-                'rejected_other'
+                'rejected_other',
             ])->default('pending_review');
             $table->text('rejection_reason')->nullable();
             $table->timestamp('uploaded_at');
