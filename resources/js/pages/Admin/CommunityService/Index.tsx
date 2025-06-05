@@ -177,7 +177,7 @@ export default function Index({ reports, stats, scholarshipPrograms, filters, au
 
     const reportsIndexBreadcrumbs: BreadcrumbItem[] = [
         { title: 'Community Service Dashboard', href: route('admin.community-service.dashboard') },
-        { title: 'All Reports' }
+        { title: 'All Reports' },
     ];
 
     const {
@@ -187,9 +187,9 @@ export default function Index({ reports, stats, scholarshipPrograms, filters, au
         processing: filterProcessing,
     } = useForm<Filters>({
         search: filters.search || '',
-        status: filters.status || '',
-        report_type: filters.report_type || '',
-        scholarship_program_id: filters.scholarship_program_id || '',
+        status: filters.status || 'all_statuses',
+        report_type: filters.report_type || 'all_types',
+        scholarship_program_id: filters.scholarship_program_id || 'all_programs',
         date_from: filters.date_from || '',
         date_to: filters.date_to || '',
         sort_by: filters.sort_by || 'submitted_at',
@@ -347,8 +347,8 @@ export default function Index({ reports, stats, scholarshipPrograms, filters, au
                                         <SheetTitle>Filter Reports</SheetTitle>
                                         <SheetDescription>Refine the list of reports based on criteria.</SheetDescription>
                                     </SheetHeader>
-                                    <form onSubmit={handleFilterSubmit} className="flex h-full flex-col space-y-4 py-4">
-                                        <div className="flex-grow space-y-4 overflow-y-auto pr-2">
+                                    <form onSubmit={handleFilterSubmit} className="flex h-full flex-col">
+                                        <div className="flex-grow space-y-6 overflow-y-auto p-6">
                                             <div>
                                                 <Label htmlFor="search-filter">Search</Label>
                                                 <Input
@@ -358,77 +358,88 @@ export default function Index({ reports, stats, scholarshipPrograms, filters, au
                                                     onChange={(e) => setFilterFormData('search', e.target.value)}
                                                 />
                                             </div>
-                                            <div>
-                                                <Label htmlFor="status-filter">Status</Label>
-                                                <Select value={filterForm.status} onValueChange={(val) => setFilterFormData('status', val)}>
-                                                    <SelectTrigger id="status-filter">
-                                                        <SelectValue placeholder="All Statuses" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="">All Statuses</SelectItem>
-                                                        {reportStatusOptions.map((opt) => (
-                                                            <SelectItem key={opt.value} value={opt.value}>
-                                                                {opt.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                            <div className="space-y-4">
+                                                <h4 className="text-muted-foreground text-sm font-medium">Filter by Category</h4>
+                                                <div>
+                                                    <Label htmlFor="status-filter">Status</Label>
+                                                    <Select value={filterForm.status} onValueChange={(val) => setFilterFormData('status', val)}>
+                                                        <SelectTrigger id="status-filter">
+                                                            <SelectValue placeholder="All Statuses" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all_statuses">All Statuses</SelectItem>
+                                                            {reportStatusOptions.map((opt) => (
+                                                                <SelectItem key={opt.value} value={opt.value}>
+                                                                    {opt.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="report-type-filter">Report Type</Label>
+                                                    <Select
+                                                        value={filterForm.report_type}
+                                                        onValueChange={(val) => setFilterFormData('report_type', val)}
+                                                    >
+                                                        <SelectTrigger id="report-type-filter">
+                                                            <SelectValue placeholder="All Types" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all_types">All Types</SelectItem>
+                                                            {reportTypeOptions.map((opt) => (
+                                                                <SelectItem key={opt.value} value={opt.value}>
+                                                                    {opt.label}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div>
+                                                    <Label htmlFor="program-filter">Scholarship Program</Label>
+                                                    <Select
+                                                        value={filterForm.scholarship_program_id}
+                                                        onValueChange={(val) => setFilterFormData('scholarship_program_id', val)}
+                                                    >
+                                                        <SelectTrigger id="program-filter">
+                                                            <SelectValue placeholder="All Programs" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="all_programs">All Programs</SelectItem>
+                                                            {scholarshipPrograms.map((p) => (
+                                                                <SelectItem key={p.id} value={String(p.id)}>
+                                                                    {p.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <Label htmlFor="report-type-filter">Report Type</Label>
-                                                <Select value={filterForm.report_type} onValueChange={(val) => setFilterFormData('report_type', val)}>
-                                                    <SelectTrigger id="report-type-filter">
-                                                        <SelectValue placeholder="All Types" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="">All Types</SelectItem>
-                                                        {reportTypeOptions.map((opt) => (
-                                                            <SelectItem key={opt.value} value={opt.value}>
-                                                                {opt.label}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="program-filter">Scholarship Program</Label>
-                                                <Select
-                                                    value={filterForm.scholarship_program_id}
-                                                    onValueChange={(val) => setFilterFormData('scholarship_program_id', val)}
-                                                >
-                                                    <SelectTrigger id="program-filter">
-                                                        <SelectValue placeholder="All Programs" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="">All Programs</SelectItem>
-                                                        {scholarshipPrograms.map((p) => (
-                                                            <SelectItem key={p.id} value={String(p.id)}>
-                                                                {p.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="date-from-filter">Submitted From</Label>
-                                                <Input
-                                                    id="date-from-filter"
-                                                    type="date"
-                                                    value={filterForm.date_from}
-                                                    onChange={(e) => setFilterFormData('date_from', e.target.value)}
-                                                />
-                                            </div>
-                                            <div>
-                                                <Label htmlFor="date-to-filter">Submitted To</Label>
-                                                <Input
-                                                    id="date-to-filter"
-                                                    type="date"
-                                                    value={filterForm.date_to}
-                                                    onChange={(e) => setFilterFormData('date_to', e.target.value)}
-                                                />
+                                            <div className="space-y-4">
+                                                <h4 className="text-muted-foreground text-sm font-medium">Filter by Submission Date</h4>
+                                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                    <div>
+                                                        <Label htmlFor="date-from-filter">From</Label>
+                                                        <Input
+                                                            id="date-from-filter"
+                                                            type="date"
+                                                            value={filterForm.date_from}
+                                                            onChange={(e) => setFilterFormData('date_from', e.target.value)}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="date-to-filter">To</Label>
+                                                        <Input
+                                                            id="date-to-filter"
+                                                            type="date"
+                                                            value={filterForm.date_to}
+                                                            onChange={(e) => setFilterFormData('date_to', e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <SheetFooter className="mt-auto gap-2 border-t pt-4">
+                                        <SheetFooter className="mt-auto gap-2 border-t p-6">
                                             <Button type="button" variant="outline" onClick={resetFilters} disabled={filterProcessing}>
                                                 Reset
                                             </Button>
