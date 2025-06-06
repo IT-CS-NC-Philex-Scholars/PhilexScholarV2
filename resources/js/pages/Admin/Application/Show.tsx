@@ -113,7 +113,7 @@ const getStatusConfig = (
     status?: string,
 ): { variant: 'default' | 'destructive' | 'outline' | 'secondary'; icon: React.ElementType; colorClass: string; label: string } => {
     const s = status?.toLowerCase() || 'unknown';
-    let label = s.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+    const label = s.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
     if (
         ['completed', 'disbursement_processed', 'service_completed', 'documents_approved', 'eligibility_verified', 'enrolled', 'approved'].includes(s)

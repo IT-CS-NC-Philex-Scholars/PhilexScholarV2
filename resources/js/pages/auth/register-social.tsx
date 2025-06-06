@@ -20,7 +20,8 @@ type RegisterForm = {
 interface SocialRegisterProps {
   providersConfig: {
     button_text: string;
-    providers: { name: string; icon: string; style: string }[];
+    disable_credentials_login: boolean;
+    providers: { name: string; icon: 'FacebookIcon' | 'GitHubIcon' | 'GoogleIcon' | 'LinkedInIcon'; branded: boolean }[];
   };
 }
 
@@ -41,12 +42,7 @@ export default function Register({ providersConfig }: SocialRegisterProps) {
     });
   };
 
-  return (
-    <AuthLayout
-      title="Create an account"
-      description="Enter your details below to create your account"
-    >
-      <Head title="Register" />
+  const credentialForm = (
       <form className="flex flex-col gap-6" onSubmit={submit}>
         <div className="grid gap-6">
           <div className="grid gap-2">
@@ -114,6 +110,7 @@ export default function Register({ providersConfig }: SocialRegisterProps) {
             <InputError message={errors.password_confirmation} />
           </div>
 
+        <div className="grid gap-2">
           <Button
             type="submit"
             className="mt-2 w-full"
@@ -125,7 +122,10 @@ export default function Register({ providersConfig }: SocialRegisterProps) {
           </Button>
         </div>
 
-        <SocialitePlus providersConfig={providersConfig} />
+        <SocialitePlus
+          providersConfig={providersConfig}
+          disableCredentialsLogin={providersConfig.disable_credentials_login}
+        />
 
         <div className="text-sm text-center text-muted-foreground">
           Already have an account?{" "}
@@ -133,7 +133,36 @@ export default function Register({ providersConfig }: SocialRegisterProps) {
             Log in
           </TextLink>
         </div>
+        </div>
       </form>
+  );
+
+  const socialOnlyRegister = (
+    <div className="flex flex-col gap-6">
+      <SocialitePlus
+        providersConfig={providersConfig}
+        disableCredentialsLogin={providersConfig.disable_credentials_login}
+      />
+      <div className="text-sm text-center text-muted-foreground">
+        Already have an account?{" "}
+        <TextLink href={route("login")} tabIndex={6}>
+          Log in
+        </TextLink>
+      </div>
+    </div>
+  );
+
+  return (
+    <AuthLayout
+      title={providersConfig.disable_credentials_login ? 'Sign up with' : 'Create an account'}
+      description={
+        providersConfig.disable_credentials_login
+          ? 'Choose a provider to create your account with'
+          : 'Enter your details below to create your account'
+      }
+    >
+      <Head title="Register" />
+      {providersConfig.disable_credentials_login ? socialOnlyRegister : credentialForm}
     </AuthLayout>
   );
 }

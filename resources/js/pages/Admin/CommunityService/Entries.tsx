@@ -156,7 +156,7 @@ const calculateDuration = (time_in?: string | null, time_out?: string | null, ho
         if (end < start) return 'Invalid'; // Time out is before time in
 
         const duration = intervalToDuration({ start, end });
-        let parts = [];
+        const parts = [];
         if (duration.hours && duration.hours > 0) parts.push(`${duration.hours}h`);
         if (duration.minutes && duration.minutes > 0) parts.push(`${duration.minutes}m`);
         return parts.length > 0 ? parts.join(' ') : hours_completed ? `${hours_completed.toFixed(1)}h` : '0m';

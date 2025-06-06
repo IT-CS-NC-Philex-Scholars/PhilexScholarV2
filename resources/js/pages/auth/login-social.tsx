@@ -43,6 +43,7 @@ interface LoginProps {
 interface SocialRegisterProps {
     providersConfig: {
         button_text: string;
+        disable_credentials_login: boolean;
         providers: { name: string; icon: 'FacebookIcon' | 'GitHubIcon' | 'GoogleIcon' | 'LinkedInIcon'; branded: boolean }[];
     };
 }
@@ -61,10 +62,7 @@ export default function Login({ status, canResetPassword, providersConfig, isDev
         });
     };
 
-    return (
-        <AuthLayout title="Log in to your account" description="Enter your email and password below to log in">
-            <Head title="Log in" />
-
+    const credentialForm = (
             <form className="flex flex-col gap-6" onSubmit={submit}>
                 <div className="grid gap-6">
                     <div className="grid gap-2">
@@ -122,7 +120,10 @@ export default function Login({ status, canResetPassword, providersConfig, isDev
                     </Button>
                 </div>
 
-                <SocialitePlus providersConfig={providersConfig} />
+            <SocialitePlus
+                providersConfig={providersConfig}
+                disableCredentialsLogin={providersConfig.disable_credentials_login}
+            />
 
                 {/* Spatie Login Links for Testing */}
                 {isDevelopment && loginLinks && <SpatieLoginLinks loginLinks={loginLinks} />}
@@ -134,6 +135,30 @@ export default function Login({ status, canResetPassword, providersConfig, isDev
                     </TextLink>
                 </div>
             </form>
+    );
+
+    const socialOnlyLogin = (
+        <div className="flex flex-col gap-6">
+            <SocialitePlus
+                providersConfig={providersConfig}
+                disableCredentialsLogin={providersConfig.disable_credentials_login}
+            />
+            {isDevelopment && loginLinks && <SpatieLoginLinks loginLinks={loginLinks} />}
+        </div>
+    );
+
+    return (
+        <AuthLayout
+            title={providersConfig.disable_credentials_login ? 'Log in with' : 'Log in to your account'}
+            description={
+                providersConfig.disable_credentials_login
+                    ? 'Choose a provider to log in with'
+                    : 'Enter your email and password below to log in'
+            }
+        >
+            <Head title="Log in" />
+
+            {providersConfig.disable_credentials_login ? socialOnlyLogin : credentialForm}
 
             {status && <div className="mb-4 text-center text-sm font-medium text-green-600">{status}</div>}
         </AuthLayout>
