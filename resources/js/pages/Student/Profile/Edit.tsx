@@ -13,8 +13,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
-import type { } from '@/types/google-maps';
 
 // @ts-ignore - Disable implicit any errors for this file
 import { 
@@ -251,66 +249,90 @@ export default function Edit({ profile }: ProfileProps) {
                     
                     <CardContent className="space-y-4">
                       <div className="grid gap-4 md:grid-cols-2">
-                        <AddressAutocomplete
-                          id="address"
-                          label="Street Address"
-                          icon={<MapPin className="h-3.5 w-3.5 text-muted-foreground" />}
-                          tooltipContent={renderTooltip('Enter your full street address including barangay and subdivision if applicable.')}
-                          value={data.address}
-                          onChange={(e) => setData('address', e.target.value)}
-                          placeholder="123 Rizal Avenue, Brgy. San Miguel"
-                          addressType="street"
-                          formSetters={{
-                            setCity: (value) => setData('city', value),
-                            setProvince: (value) => setData('state', value),
-                            setPostalCode: (value) => setData('zip_code', value)
-                          }}
-                          error={errors.address}
-                          required
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="address" className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                            Street Address
+                            {renderTooltip('Enter your full street address including barangay and subdivision if applicable.')}
+                          </Label>
+                          <Input
+                            id="address"
+                            value={data.address}
+                            onChange={(e) => setData('address', e.target.value)}
+                            placeholder="123 Rizal Avenue, Brgy. San Miguel"
+                            required
+                          />
+                          {errors.address && (
+                            <div className="text-sm text-red-500 flex items-center gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {errors.address}
+                            </div>
+                          )}
+                        </div>
 
-                        <AddressAutocomplete
-                          id="city"
-                          label="City/Municipality"
-                          icon={<Building className="h-3.5 w-3.5 text-muted-foreground" />}
-                          tooltipContent={renderTooltip('Select your city or municipality')}
-                          value={data.city}
-                          onChange={(e) => setData('city', e.target.value)}
-                          placeholder="Select city/municipality"
-                          addressType="city"
-                          formSetters={{
-                            setProvince: (value) => setData('state', value),
-                          }}
-                          error={errors.city}
-                          required
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="city" className="flex items-center gap-1.5">
+                            <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                            City/Municipality
+                            {renderTooltip('Select your city or municipality')}
+                          </Label>
+                          <Input
+                            id="city"
+                            value={data.city}
+                            onChange={(e) => setData('city', e.target.value)}
+                            placeholder="Select city/municipality"
+                            required
+                          />
+                          {errors.city && (
+                            <div className="text-sm text-red-500 flex items-center gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {errors.city}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="grid gap-4 md:grid-cols-2">
-                        <AddressAutocomplete
-                          id="state"
-                          label="Province"
-                          icon={<MapPin className="h-3.5 w-3.5 text-muted-foreground" />}
-                          tooltipContent={renderTooltip('Select your province in the Philippines')}
-                          value={data.state}
-                          onChange={(e) => setData('state', e.target.value)}
-                          placeholder="Select province (e.g. Benguet, Cebu, Davao)"
-                          addressType="province"
-                          error={errors.state}
-                          required
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="state" className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                            Province
+                            {renderTooltip('Select your province in the Philippines')}
+                          </Label>
+                          <Input
+                            id="state"
+                            value={data.state}
+                            onChange={(e) => setData('state', e.target.value)}
+                            placeholder="Select province (e.g. Benguet, Cebu, Davao)"
+                            required
+                          />
+                          {errors.state && (
+                            <div className="text-sm text-red-500 flex items-center gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {errors.state}
+                            </div>
+                          )}
+                        </div>
 
-                        <AddressAutocomplete
-                          id="zip_code"
-                          label="Zip Code"
-                          icon={<MapPin className="h-3.5 w-3.5 text-muted-foreground" />}
-                          value={data.zip_code}
-                          onChange={(e) => setData('zip_code', e.target.value)}
-                          placeholder="1000"
-                          addressType="postal_code"
-                          error={errors.zip_code}
-                          required
-                        />
+                        <div className="space-y-2">
+                          <Label htmlFor="zip_code" className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                            Zip Code
+                          </Label>
+                          <Input
+                            id="zip_code"
+                            value={data.zip_code}
+                            onChange={(e) => setData('zip_code', e.target.value)}
+                            placeholder="1000"
+                            required
+                          />
+                          {errors.zip_code && (
+                            <div className="text-sm text-red-500 flex items-center gap-1">
+                              <AlertCircle className="h-3.5 w-3.5" />
+                              {errors.zip_code}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <div className="space-y-2">
