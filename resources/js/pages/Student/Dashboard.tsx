@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Keep for ApplicationsSection internal tabs
 import { CompleteProfileModal } from '@/components/CompleteProfileModal';
-import { 
+import {
   CalendarIcon, GraduationCapIcon, FileTextIcon, UserIcon, 
   ClockIcon, CheckCircleIcon, AlertCircleIcon, BookOpenIcon,
   HomeIcon, TrendingUpIcon, AwardIcon, BellIcon, DollarSignIcon,
   ChevronRightIcon, SearchIcon, MapPinIcon, BadgeIcon, CircleIcon,
   LayoutDashboardIcon, BriefcaseIcon, SparklesIcon, StarIcon, PlusIcon, ArrowRightIcon,
-  ListChecks, ThumbsUp, Eye, MessageSquare, FileWarning, BarChart3, TargetIcon // Added new icons
+  ListChecks, ThumbsUp, Eye, MessageSquare, FileWarning, BarChart3, TargetIcon, // Added TargetIcon
 } from 'lucide-react'; // Existing icons
 import { UserCircle2, MailCheck, FileUp, Send as SendIconLucide } from 'lucide-react'; // Icons for onboarding steps, renamed Send to SendIconLucide
 import { Progress } from '@/components/ui/progress';
@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import React, { useEffect, useMemo, useState } from 'react'; // Ensure React is imported for JSX, added useMemo
 import { cn } from '@/lib/utils';
 import OnboardingStepsCard, { OnboardingStep } from './components/OnboardingStepsCard'; // Import the new component and its type
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'; // For QuickActionsCard disabled button tooltip
 
 interface DashboardProps {
   hasProfile: boolean;
@@ -65,6 +66,99 @@ const getApplicationProgress = (status: string): number => {
 };
 
 // --- New Dashboard Components ---
+
+interface QuickActionsCardProps {
+  setActiveSection: (section: string) => void;
+  hasProfile: boolean;
+  isLoaded: boolean;
+}
+
+const QuickActionsCard: React.FC<QuickActionsCardProps> = ({ setActiveSection, hasProfile, isLoaded }) => {
+  const actions = [
+    {
+      title: "Find New Scholarships",
+      description: "Discover opportunities tailored for you.",
+      icon: SearchIcon,
+      action: () => setActiveSection('scholarships'),
+      buttonVariant: 'default' as const,
+      className: "bg-primary hover:bg-primary/90 text-primary-foreground",
+      disabled: !hasProfile,
+      tooltip: !hasProfile ? "Complete your profile to find scholarships" : "Search for available scholarships"
+    },
+    {
+      title: "View My Applications",
+      description: "Track your progress and manage submissions.",
+      icon: BriefcaseIcon,
+      action: () => setActiveSection('applications'),
+      buttonVariant: 'default' as const,
+      className: "bg-green-600 hover:bg-green-700 text-white",
+      disabled: false,
+      tooltip: "Check the status of your applications"
+    },
+  ];
+
+  return (
+    <Card className={cn("transition-all duration-500 ease-out shadow-md hover:shadow-lg", isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4", "delay-100")}>
+      <CardHeader>
+        <CardTitle className="text-xl flex items-center gap-2">
+          <TargetIcon className="h-6 w-6 text-primary" />
+          What would you like to do?
+        </CardTitle>
+        {!hasProfile && (
+          <CardDescription className="text-amber-600 dark:text-amber-500">
+            Complete your profile to access all features, including applying for scholarships.
+          </CardDescription>
+        )}
+        {hasProfile && (
+            <CardDescription>Choose an action to continue your scholarship journey.</CardDescription>
+        )}
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {actions.map((item) => (
+          <TooltipProvider key={item.title} delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={item.action}
+                  disabled={item.disabled}
+                  variant={item.buttonVariant}
+                  className={cn(
+                    "w-full h-auto p-4 text-left flex flex-col items-start justify-start shadow-lg hover:shadow-xl focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-background transition-all duration-300 ease-out group",
+                    item.className,
+                    item.disabled ? "cursor-not-allowed opacity-70" : "hover:scale-[1.02] active:scale-[0.98]",
+                  )}
+                >
+                  <div className="flex items-center mb-2">
+                    <item.icon className={cn("h-7 w-7 mr-3 opacity-90 transition-transform duration-300 group-hover:scale-110", item.disabled && "opacity-50")} />
+                    <span className="text-lg font-semibold leading-tight">{item.title}</span>
+                  </div>
+                  <p className={cn("text-sm opacity-90", item.disabled && "opacity-60")}>{item.description}</p>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{item.tooltip}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ))}
+      </CardContent>
+      {!hasProfile && (
+        <CardFooter className="flex-col items-start gap-2 pt-4 border-t">
+            <p className="text-sm text-muted-foreground">
+                Your profile is incomplete. This might limit your access to certain features.
+            </p>
+            <Button asChild variant="secondary" size="sm">
+                <Link href={route('student.profile.edit')} className="font-semibold">
+                    Complete Profile Now <ArrowRightIcon className="inline h-4 w-4 ml-1.5"/>
+                </Link>
+            </Button>
+        </CardFooter>
+      )}
+    </Card>
+  );
+};
+
+// --- Original Dashboard Components (may need minor adjustments if any) ---
 
 interface DashboardHeaderProps {
   user: any;
@@ -274,82 +368,26 @@ interface OverviewSectionProps {
   upcomingDeadlines: ScholarshipApplication[]; // Added prop for upcoming deadlines
 }
 
-const OverviewSection: React.FC<OverviewSectionProps> = ({ applications, auth, hasProfile, isLoaded, setActiveSection, onboardingSteps, upcomingDeadlines }) => {
-  // Filter out any applications where app.scholarship might be null or undefined
-  const validRecommendedScholarships = applications
-    .slice(0, 2)
-    .map(app => (app as any).scholarship) // Use type assertion here
-    .filter(scholarship => scholarship != null); // Ensures scholarship is not null or undefined
-
+const OverviewSection: React.FC<OverviewSectionProps> = ({
+  applications, auth, hasProfile, isLoaded, setActiveSection, onboardingSteps, upcomingDeadlines
+}) => {
   return (
-    <div className={cn("space-y-6 transition-all duration-500 ease-out", isLoaded ? "opacity-100" : "opacity-0")}>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <OnboardingStepsCard
-            steps={onboardingSteps}
-            isLoaded={isLoaded}
-          />
-          <Card className={cn("transition-all duration-500 ease-out", isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")}>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <StarIcon className="h-5 w-5 text-primary" /> Recommended For You
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {validRecommendedScholarships.length > 0 ? (
-                <ul className="space-y-3">
-                  {validRecommendedScholarships.map(scholarship => (
-                    <li key={scholarship.id} className="p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors flex justify-between items-center">
-                      <div>
-                        <h4 className="font-semibold">{scholarship.name}</h4>
-                        <p className="text-sm text-muted-foreground">Deadline: {new Date(scholarship.deadline).toLocaleDateString()}</p>
-                      </div>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={route('scholarships.show', scholarship.id)}>View <ChevronRightIcon className="h-4 w-4 ml-1"/></Link>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground">No specific recommendations right now. Explore available scholarships!</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-        <div className="lg:col-span-1">
-          <Card className={cn("transition-all duration-500 ease-out", isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")}>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <CalendarIcon className="h-5 w-5 text-primary" /> Upcoming Deadlines
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {upcomingDeadlines.length > 0 ? (
-                <ul className="space-y-3">
-                  {upcomingDeadlines.map(deadline => (
-                    <li key={deadline.id} className="p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors flex justify-between items-center">
-                      <div>
-                        <h4 className="font-semibold">{deadline.scholarship?.title}</h4>
-                        <p className="text-sm text-muted-foreground">Apply by: {new Date(deadline.scholarship?.deadline).toLocaleDateString()}</p>
-                      </div>
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={route('student.applications.show', deadline.id)}>View <ArrowRightIcon className="h-4 w-4 ml-2"/></Link>
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-muted-foreground">No upcoming deadlines at the moment. Great job!</p>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+    <div className={cn("space-y-6 md:space-y-8", isLoaded ? "opacity-100" : "opacity-0", "transition-opacity duration-500 delay-400")}>
+      {onboardingSteps.length > 0 && (
+        <OnboardingStepsCard steps={onboardingSteps} isLoaded={isLoaded} />
+      )}
+
+      <QuickActionsCard
+        setActiveSection={setActiveSection}
+        hasProfile={hasProfile}
+        isLoaded={isLoaded} 
+      />
+
+      {/* Stats and Deadlines Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+        <QuickStatsCard applications={applications} isLoaded={isLoaded} />
+        <UpcomingDeadlinesCard deadlines={upcomingDeadlines} isLoaded={isLoaded} />
       </div>
-      <CardFooter>
-        <Button asChild variant="default" className="w-full md:w-auto">
-          <Link href={route('student.scholarships.index')}>Browse All Scholarships <SearchIcon className="h-4 w-4 ml-2"/></Link>
-        </Button>
-      </CardFooter>
     </div>
   );
 };

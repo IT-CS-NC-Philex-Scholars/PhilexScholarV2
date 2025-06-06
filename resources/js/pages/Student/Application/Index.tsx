@@ -63,10 +63,10 @@ const ApplicationCard = ({
             <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3 sm:gap-4">
               <div className="space-y-1.5 sm:space-y-2">
                 <h3 className="font-semibold text-base sm:text-lg group-hover:text-primary transition-colors line-clamp-1">
-                  {application.scholarshipProgram?.name}
+                  {application.scholarship_program?.name}
                 </h3>
                 <p className="text-xs sm:text-sm text-muted-foreground">
-                  {application.scholarshipProgram?.semester} | {application.scholarshipProgram?.academic_year}
+                  {application.scholarship_program?.semester} | {application.scholarship_program?.academic_year}
                 </p>
                 
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-1.5 sm:mt-2">
@@ -77,12 +77,12 @@ const ApplicationCard = ({
                     </Badge>
                   </div>
 
-                  {application.scholarshipProgram?.community_service_days && application.scholarshipProgram.community_service_days > 0 && (
+                  {application.scholarship_program?.community_service_days && application.scholarship_program.community_service_days > 0 && (
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors px-1.5 sm:px-2 py-0.5 rounded-full bg-muted/50 border border-border">
                           <TimerIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
-                          {application.scholarshipProgram.community_service_days * 8} hours service
+                          {application.scholarship_program.community_service_days * 8} hours service
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>Required Community Service</p>

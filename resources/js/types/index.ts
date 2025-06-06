@@ -30,7 +30,7 @@ export interface StudentProfile {
   school_name: string;
   student_id?: string;
   gpa?: number;
-  scholarshipApplications?: ScholarshipApplication[];
+  scholarship_applications?: ScholarshipApplication[];
 }
 
 export interface ScholarshipProgram {
@@ -68,11 +68,11 @@ export interface ScholarshipApplication {
   reviewed_at: string | null;
   created_at: string;
   updated_at: string;
-  scholarshipProgram?: ScholarshipProgram;
-  studentProfile?: StudentProfile & { user?: User };
-  documentUploads?: DocumentUpload[];
-  communityServiceReports?: CommunityServiceReport[];
-  communityServiceEntries?: CommunityServiceEntry[];
+  scholarship_program?: ScholarshipProgram;
+  student_profile?: StudentProfile & { user?: User };
+  document_uploads?: DocumentUpload[];
+  community_service_reports?: CommunityServiceReport[];
+  community_service_entries?: CommunityServiceEntry[];
   disbursements?: Disbursement[];
 }
 
