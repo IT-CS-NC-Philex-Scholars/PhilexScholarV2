@@ -9,6 +9,7 @@ use App\Models\CommunityServiceEntry;
 use App\Models\CommunityServiceReport;
 use App\Models\ScholarshipApplication;
 use App\Notifications\DatabaseNotification;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
@@ -66,11 +67,19 @@ final class CommunityServiceController extends Controller
         $query = CommunityServiceReport::with([
             'scholarshipApplication.studentProfile.user',
             'scholarshipApplication.scholarshipProgram',
-        ]);
+        ])->whereHas('scholarshipApplication', function ($q) {
+            $q->whereHas('studentProfile.user')->whereHas('scholarshipProgram');
+        });
 
         // Filter by status
         if ($request->filled('status')) {
-            $query->where('status', $request->status);
+            if ($request->status === 'rejected') {
+                $query->where(function ($q): void {
+                    $q->where('status', 'like', 'rejected_%');
+                });
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         // Filter by report type
@@ -97,11 +106,13 @@ final class CommunityServiceController extends Controller
         // Search by student name or scholarship
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->whereHas('scholarshipApplication.studentProfile.user', function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
-            })->orWhereHas('scholarshipApplication.scholarshipProgram', function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%");
+            $query->where(function (Builder $q) use ($search) {
+                $q->whereHas('scholarshipApplication.studentProfile.user', function (Builder $subQ) use ($search) {
+                    $subQ->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%");
+                })->orWhereHas('scholarshipApplication.scholarshipProgram', function (Builder $subQ) use ($search) {
+                    $subQ->where('name', 'like', "%{$search}%");
+                });
             });
         }
 
@@ -110,7 +121,7 @@ final class CommunityServiceController extends Controller
         $sortDirection = $request->get('direction', 'desc');
         $query->orderBy($sortBy, $sortDirection);
 
-        $reports = $query->paginate(20);
+        $reports = $query->paginate(20)->withQueryString();
 
         // Enhanced statistics with trends
         $stats = [
@@ -152,7 +163,7 @@ final class CommunityServiceController extends Controller
             })
             ->orderBy('name')
             ->get();
-
+            // dd($reports->first());
         return Inertia::render('Admin/CommunityService/Index', [
             'reports' => $reports,
             'stats' => $stats,
@@ -175,41 +186,30 @@ final class CommunityServiceController extends Controller
             },
         ]);
 
-        // Comment out the temporary debugging lines
-        // if (!$report->relationLoaded('scholarshipApplication')) {
-        //     abort(500, 'ScholarshipApplication relation was not loaded.');
-        // }
-        // if ($report->scholarshipApplication === null) {
-        //     abort(500, \'ScholarshipApplication is null even after loading. Check foreign key and data integrity for report ID: \' . $report->id);
-        // }
-
         $entries = [];
-        $reportData = $report->toArray(); // Base report attributes
+        $reportData = $report->toArray();
 
         if ($report->scholarshipApplication) {
-            $scholarshipApplicationData = $report->scholarshipApplication->toArray(); // Base application attributes
+            $scholarshipApplicationData = $report->scholarshipApplication->toArray();
 
-            // Explicitly add loaded studentProfile if it exists and is loaded
             if ($report->scholarshipApplication->relationLoaded('studentProfile') && $report->scholarshipApplication->studentProfile) {
                 $scholarshipApplicationData['studentProfile'] = $report->scholarshipApplication->studentProfile->toArray();
-                // If studentProfile itself has a 'user' relation loaded and needed:
+
                 if ($report->scholarshipApplication->studentProfile->relationLoaded('user') && $report->scholarshipApplication->studentProfile->user) {
                     $scholarshipApplicationData['studentProfile']['user'] = $report->scholarshipApplication->studentProfile->user->toArray();
                 }
             } else {
-                $scholarshipApplicationData['studentProfile'] = null; // Or handle as an error / default
+                $scholarshipApplicationData['studentProfile'] = null;
             }
 
-            // Explicitly add loaded scholarshipProgram if it exists and is loaded
             if ($report->scholarshipApplication->relationLoaded('scholarshipProgram') && $report->scholarshipApplication->scholarshipProgram) {
                 $scholarshipApplicationData['scholarshipProgram'] = $report->scholarshipApplication->scholarshipProgram->toArray();
             } else {
-                $scholarshipApplicationData['scholarshipProgram'] = null; // Or handle as an error / default
+                $scholarshipApplicationData['scholarshipProgram'] = null;
             }
 
             $reportData['scholarshipApplication'] = $scholarshipApplicationData;
 
-            // Populate entries if scholarshipApplication and its entries exist
             if ($report->scholarshipApplication->relationLoaded('communityServiceEntries')) {
                 $entries = $report->scholarshipApplication->communityServiceEntries
                     ? $report->scholarshipApplication->communityServiceEntries->toArray()
@@ -400,7 +400,7 @@ final class CommunityServiceController extends Controller
     {
         abort_if(! $report->pdf_report_path || ! Storage::disk('local')->exists($report->pdf_report_path), 404);
 
-        return Storage::disk('local')->download($report->pdf_report_path,
+        return response()->download(Storage::disk('local')->path($report->pdf_report_path),
             "community_service_report_{$report->id}.pdf");
     }
 
@@ -409,9 +409,13 @@ final class CommunityServiceController extends Controller
      */
     public function downloadPhoto(CommunityServiceEntry $entry, string $photoPath)
     {
-        abort_if(! in_array($photoPath, $entry->photos ?? []) || ! Storage::disk('local')->exists($photoPath), 404);
+        // Sanitize photoPath to prevent directory traversal
+        $basePath = "user_{$entry->scholarshipApplication->student_profile_id}/community_service_entries/{$entry->id}";
+        $fullPath = "{$basePath}/{$photoPath}";
 
-        return Storage::disk('local')->download($photoPath);
+        abort_if(! in_array($fullPath, $entry->photos ?? []) || ! Storage::disk('local')->exists($fullPath), 404);
+
+        return response()->download(Storage::disk('local')->path($fullPath));
     }
 
     /**
