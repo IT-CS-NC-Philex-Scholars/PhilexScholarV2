@@ -67,15 +67,52 @@ final class DashboardController extends Controller
 
         $recentApplications = $recentApplicationsQuery->latest()->take(5)->get();
         
-        // Student demographics for the selected scholarship
-        $studentDemographicsBySchoolType = StudentProfile::query()
-            ->when($selectedScholarshipId, function ($query) use ($selectedScholarshipId) {
-                $query->whereHas('scholarshipApplications', fn ($q) => $q->where('scholarship_program_id', $selectedScholarshipId));
-            })
-            ->select('school_type', DB::raw('count(*) as count'))
-            ->groupBy('school_type')
+        // Application Trends data for the last 7 weeks
+        $driver = DB::connection()->getDriverName();
+
+        $applicationTrendsQuery = (clone $applicationsQuery);
+
+        if ($driver === 'sqlite') {
+            $applicationTrendsQuery->select(DB::raw("strftime('%Y', created_at) as year, strftime('%W', created_at) as week, count(*) as count"));
+        } else {
+            // Assuming MySQL, PostgreSQL, etc.
+            $applicationTrendsQuery->select(DB::raw('YEAR(created_at) as year, WEEK(created_at, 1) as week, count(*) as count'));
+        }
+
+        $applicationTrends = $applicationTrendsQuery
+            ->where('created_at', '>=', Carbon::now()->subWeeks(7)->startOfWeek())
+            ->groupBy('year', 'week')
+            ->orderBy('year')
+            ->orderBy('week')
             ->get()
-            ->mapWithKeys(fn ($item) => [$item->school_type ?? 'Unknown' => $item->count])
+            ->map(function ($item) {
+                return [
+                    // Add 1 to week because SQL week can start at 0, but we want to show Week 1, Week 2, etc.
+                    'date' => 'Week '.((int) $item->week + 1),
+                    'New Applications' => $item->count,
+                ];
+            });
+
+        // Student demographics for the selected scholarship
+        $demographicsQuery = StudentProfile::query();
+
+        if ($selectedScholarshipId) {
+            $program = ScholarshipProgram::query()->find($selectedScholarshipId);
+
+            $demographicsQuery->whereHas('scholarshipApplications', fn ($q) => $q->where('scholarship_program_id', $selectedScholarshipId));
+
+            if ($program && in_array($program->school_type_eligibility, ['college', 'high_school'])) {
+                $demographicsQuery->where('school_level', $program->school_type_eligibility);
+            }
+        }
+        
+        $studentDemographicsBySchoolName = $demographicsQuery
+            ->select('school_name', DB::raw('count(*) as count'))
+            ->groupBy('school_name')
+            ->orderBy('count', 'desc')
+            ->take(10) // Limit to top 10 for better visualization
+            ->get()
+            ->mapWithKeys(fn ($item) => [$item->school_name ?? 'Unknown' => $item->count])
             ->toArray();
 
         // Financial Snapshot for the selected scholarship
@@ -118,12 +155,13 @@ final class DashboardController extends Controller
                 'pendingApplications' => $pendingApplications,
                 'applicationStats' => $applicationStats,
                 'scholarshipsNearingDeadline' => $scholarshipsNearingDeadline,
-                'studentDemographicsBySchoolType' => $studentDemographicsBySchoolType,
+                'studentDemographicsBySchoolName' => $studentDemographicsBySchoolName,
                 'totalBudget' => (float) $totalBudget,
                 'totalDisbursedAmount' => (float) $totalDisbursedAmount,
                 'totalPendingDisbursementAmount' => (float) $totalPendingDisbursementAmount,
                 'pendingCommunityServiceReports' => $pendingCommunityServiceReports,
                 'popularPrograms' => $popularPrograms,
+                'applicationTrends' => $applicationTrends,
             ],
             'recentApplications' => $recentApplications,
             'scholarshipPrograms' => $scholarshipPrograms,
