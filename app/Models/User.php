@@ -39,7 +39,7 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  *
  * @mixin \Eloquent
  */
-final class User extends Authenticatable implements MustVerifyEmail
+final class User extends Authenticatable 
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
