@@ -7,6 +7,7 @@ namespace Database\Seeders;
 use App\Models\StudentProfile;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 final class UserSeeder extends Seeder
 {
@@ -16,23 +17,25 @@ final class UserSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        \App\Models\User::query()->create([
+        User::query()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
             'password' => bcrypt('password'),
             'role' => 'admin',
+            'email_verified_at' => Carbon::now(),
         ]);
 
         // Create student users
-        $student1 = \App\Models\User::query()->create([
+        $student1 = User::query()->create([
             'name' => 'John Doe',
             'email' => 'student@example.com',
             'password' => bcrypt('password'),
             'role' => 'student',
+            'email_verified_at' => Carbon::now(),
         ]);
 
         // Create profile for first student
-        \App\Models\StudentProfile::query()->create([
+        StudentProfile::query()->create([
             'user_id' => $student1->id,
             'address' => '123 Student St',
             'city' => 'College City',
@@ -45,18 +48,20 @@ final class UserSeeder extends Seeder
         ]);
 
         // Create more students without profiles
-        \App\Models\User::query()->create([
+        User::query()->create([
             'name' => 'Jane Smith',
             'email' => 'jane@example.com',
             'password' => bcrypt('password'),
             'role' => 'student',
+            'email_verified_at' => Carbon::now(),
         ]);
 
-        \App\Models\User::query()->create([
+        User::query()->create([
             'name' => 'Bob Johnson',
             'email' => 'bob@example.com',
             'password' => bcrypt('password'),
             'role' => 'student',
+            'email_verified_at' => Carbon::now(),
         ]);
     }
 }

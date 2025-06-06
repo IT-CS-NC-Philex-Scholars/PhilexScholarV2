@@ -405,12 +405,14 @@ export default function Index({ reports, stats, scholarshipPrograms, filters, au
                                                             <SelectValue placeholder="All Programs" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            <SelectItem value="all_programs">All Programs</SelectItem>
-                                                            {scholarshipPrograms.map((p) => (
-                                                                <SelectItem key={p.id} value={String(p.id)}>
-                                                                    {p.name}
-                                                                </SelectItem>
-                                                            ))}
+                                                            <SelectItem value={'all_programs'}>All Programs</SelectItem>
+                                                            {scholarshipPrograms
+                                                                .filter((p) => String(p.id) !== '')
+                                                                .map((p) => (
+                                                                    <SelectItem key={p.id} value={String(p.id)}>
+                                                                        {p.name}
+                                                                    </SelectItem>
+                                                                ))}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
