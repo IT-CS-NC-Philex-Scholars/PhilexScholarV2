@@ -3,12 +3,13 @@ import { Head, useForm } from '@inertiajs/react';
 import { motion } from 'framer-motion';
 import { toast, Toaster } from 'sonner';
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem, StudentProfile } from '@/types';
+import { BreadcrumbItem, StudentProfile, SchoolData } from '@/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -17,16 +18,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 // @ts-ignore - Disable implicit any errors for this file
 import { 
   User, Home, School, Phone, MapPin, Mail, BookOpen, 
-  GraduationCap, Building, Save, AlertCircle, CheckCircle, HelpCircle 
+  GraduationCap, Building, Save, AlertCircle, CheckCircle, HelpCircle, Check, ChevronsUpDown 
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 
 interface ProfileProps {
   profile: StudentProfile | null;
+  allSchoolData: SchoolData[];
 }
 
-export default function Edit({ profile }: ProfileProps) {
+export default function Edit({ profile, allSchoolData }: ProfileProps) {
   const [activeTab, setActiveTab] = useState<string>('personal');
   const [formProgress, setFormProgress] = useState<number>(0);
+  const [openSchoolCombobox, setOpenSchoolCombobox] = useState(false);
+  const [currentSchoolValue, setCurrentSchoolValue] = useState(profile?.school_name || '');
   
   const { data, setData, patch, errors, processing, reset } = useForm({
     id: profile?.id || 0,
@@ -55,10 +61,18 @@ export default function Edit({ profile }: ProfileProps) {
     if (data.school_type) filledFields++;
     if (data.school_level) filledFields++;
     if (data.school_name) filledFields++;
-    
+
     const progress = Math.round((filledFields / totalFields) * 100);
+
     setFormProgress(progress);
   }, [data]);
+
+  // Update currentSchoolValue when profile.school_name changes (e.g. after form submission)
+  useEffect(() => {
+    if (profile?.school_name) {
+      setCurrentSchoolValue(profile.school_name);
+    }
+  }, [profile?.school_name]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -447,23 +461,63 @@ export default function Edit({ profile }: ProfileProps) {
                         <Label htmlFor="school_name" className="flex items-center gap-1.5">
                           <Building className="h-3.5 w-3.5 text-muted-foreground" />
                           School Name
-                          {renderTooltip('The full name of your current school or university')}
+                          {renderTooltip('Select your current school. Type to search.')}
                         </Label>
-                        <Input
-                          id="school_name"
-                          value={data.school_name}
-                          onChange={e => setData('school_name', e.target.value)}
-                          placeholder="University of the Philippines"
-                          required
-                        />
+                        <Popover open={openSchoolCombobox} onOpenChange={setOpenSchoolCombobox}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={openSchoolCombobox}
+                              className="w-full justify-between font-normal"
+                            >
+                              {currentSchoolValue
+                                ? allSchoolData.find((school) => school.school_name.toLowerCase() === currentSchoolValue.toLowerCase())?.school_name
+                                : 'Select school...'}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] max-h-[--radix-popover-content-available-height] p-0">
+                            <Command>
+                              <CommandInput placeholder="Search school..." />
+                              <CommandList>
+                                <CommandEmpty>No school found.</CommandEmpty>
+                                <CommandGroup>
+                                  {allSchoolData
+                                    .filter(school => school.school_type === data.school_type)
+                                    .map((school) => (
+                                      <CommandItem
+                                        key={school.school_name} // Assuming school_name is unique for a given type
+                                        value={school.school_name}
+                                        onSelect={(currentValue) => {
+                                          const selectedSchoolName = allSchoolData.find(s => s.school_name.toLowerCase() === currentValue.toLowerCase())?.school_name || '';
+                                          setData('school_name', selectedSchoolName);
+                                          setCurrentSchoolValue(selectedSchoolName);
+                                          setOpenSchoolCombobox(false);
+                                        }}
+                                      >
+                                        <Check
+                                          className={cn(
+                                            'mr-2 h-4 w-4',
+                                            currentSchoolValue.toLowerCase() === school.school_name.toLowerCase() ? 'opacity-100' : 'opacity-0'
+                                          )}
+                                        />
+                                        {school.school_name}
+                                      </CommandItem>
+                                    ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         {errors.school_name && (
-                          <div className="text-sm text-red-500 flex items-center gap-1">
+                          <div className="text-sm text-red-500 flex items-center gap-1 pt-1">
                             <AlertCircle className="h-3.5 w-3.5" />
                             {errors.school_name}
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="pt-4 flex items-center justify-between">
                         <Button 
                           type="button" 

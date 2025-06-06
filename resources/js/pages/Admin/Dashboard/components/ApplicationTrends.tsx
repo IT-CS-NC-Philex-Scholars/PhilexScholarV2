@@ -1,17 +1,22 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ResponsiveContainer, LineChart, XAxis, YAxis, Tooltip, Line, CartesianGrid } from 'recharts';
+import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    LineChart,
+    XAxis,
+    YAxis,
+    Line,
+    CartesianGrid,
+} from '@/components/ui/chart';
 
 interface ApplicationTrendsProps {
     stats: {
         applicationTrends: Array<{ date: string; 'New Applications': number }>;
     };
-    chartColors: {
-        mutedForeground: string;
-        primary: string;
-    };
 }
 
-export default function ApplicationTrends({ stats, chartColors }: ApplicationTrendsProps) {
+export default function ApplicationTrends({ stats }: ApplicationTrendsProps) {
     return (
         <Card>
             <CardHeader>
@@ -19,33 +24,27 @@ export default function ApplicationTrends({ stats, chartColors }: ApplicationTre
                 <CardDescription>New applications over the last 7 weeks.</CardDescription>
             </CardHeader>
             <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={stats.applicationTrends}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                <ChartContainer config={{}} className="h-[300px] w-full">
+                    <LineChart accessibilityLayer data={stats.applicationTrends}>
+                        <CartesianGrid vertical={false} />
                         <XAxis
                             dataKey="date"
-                            stroke={chartColors.mutedForeground}
-                            fontSize={12}
                             tickLine={false}
                             axisLine={false}
+                            tickMargin={8}
+                            tickFormatter={(value) => value.slice(0, 6)}
                         />
-                        <YAxis stroke={chartColors.mutedForeground} fontSize={12} tickLine={false} axisLine={false} />
-                        <Tooltip
-                            cursor={{ fill: 'hsla(var(--muted))' }}
-                            contentStyle={{
-                                backgroundColor: 'hsla(var(--background))',
-                                borderColor: 'hsla(var(--border))',
-                            }}
-                        />
+                        <YAxis tickLine={false} axisLine={false} />
+                        <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
                         <Line
-                            type="monotone"
                             dataKey="New Applications"
-                            stroke={chartColors.primary}
+                            type="natural"
+                            stroke="var(--color-primary)"
                             strokeWidth={2}
-                            dot={{ r: 4, fill: chartColors.primary }}
+                            dot={false}
                         />
                     </LineChart>
-                </ResponsiveContainer>
+                </ChartContainer>
             </CardContent>
         </Card>
     );

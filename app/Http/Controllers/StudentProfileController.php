@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\StudentProfile;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,9 +21,11 @@ final class StudentProfileController extends Controller
     {
         $user = Auth::user();
         $profile = $user->studentProfile;
+        $allSchoolData = StudentProfile::select('school_name', 'school_type')->whereNotNull('school_name')->whereNotNull('school_type')->distinct()->get();
 
         return Inertia::render('Student/Profile/Edit', [
             'profile' => $profile,
+            'allSchoolData' => $allSchoolData,
         ]);
     }
 

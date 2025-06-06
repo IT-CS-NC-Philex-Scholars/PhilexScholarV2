@@ -1,8 +1,8 @@
 import AppLayout from '@/layouts/app-layout';
-import { BreadcrumbItem } from '@/components/ui/breadcrumb';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList } from '@/components/ui/breadcrumb';
 import { Head, router } from '@inertiajs/react';
 import * as React from 'react';
-import { ScholarshipApplication } from '@/types';
+import { ScholarshipApplication, type BreadcrumbItem as BreadcrumbItemType } from '@/types';
 import DashboardHeader from './Dashboard/components/DashboardHeader';
 import ActionItems from './Dashboard/components/ActionItems';
 import RecentApplications from './Dashboard/components/RecentApplications';
@@ -36,7 +36,7 @@ interface DashboardProps {
     };
 }
 
-const breadcrumbs: BreadcrumbItem[] = [{ title: 'Admin Dashboard' }];
+const breadcrumbs: BreadcrumbItemType[] = [{ title: 'Admin Dashboard', href: route('admin.dashboard') }];
 
 export default function Dashboard({ stats, recentApplications, scholarshipPrograms, filters }: DashboardProps) {
     const [chartColors, setChartColors] = React.useState({
@@ -119,7 +119,7 @@ export default function Dashboard({ stats, recentApplications, scholarshipProgra
                 <ActionItems stats={stats} />
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     <div className="lg:col-span-2 space-y-6">
-                        <ApplicationTrends stats={stats} chartColors={chartColors} />
+                        <ApplicationTrends stats={stats} />
                         <RecentApplications recentApplications={recentApplications} />
                     </div>
                     <div className="lg:col-span-1 space-y-6">
