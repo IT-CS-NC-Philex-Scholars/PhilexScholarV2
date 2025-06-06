@@ -41,7 +41,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
     documentRequirements.map(req => ({ ...req, isNew: false, isDeleted: false }))
   );
 
-  const { data, setData, post, errors, processing } = useForm({
+  const { data, setData, post, put, errors, processing } = useForm({
     name: scholarship.name || '',
     description: scholarship.description || '',
     total_budget: scholarship.total_budget || 0,
@@ -56,6 +56,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
       new Date().toISOString().split('T')[0],
     community_service_days: scholarship.community_service_days || 0,
     active: scholarship.active ?? true,
+    available_slots: scholarship.available_slots || 0, // Add available_slots
     documentRequirements: requirements,
   });
 
@@ -74,7 +75,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
     const filteredRequirements = requirements.filter(req => !req.isDeleted);
     setData('documentRequirements', filteredRequirements);
     
-    post(route('admin.scholarships.update', scholarship.id), {
+    put(route('admin.scholarships.update', scholarship.id), {
       onSuccess: () => {
         // Handle success
       },
@@ -155,12 +156,17 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="semester">Semester</Label>
-                  <Input
-                    id="semester"
-                    value={data.semester}
-                    onChange={e => setData('semester', e.target.value)}
-                    required
-                  />
+                  <Select value={data.semester} onValueChange={value => setData('semester', value)}>
+                    <SelectTrigger id="semester">
+                      <SelectValue placeholder="Select semester" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1st Semester">1st Semester</SelectItem>
+                      <SelectItem value="2nd Semester">2nd Semester</SelectItem>
+                      <SelectItem value="Summer Term">Summer Term</SelectItem>
+                      <SelectItem value="Annual">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.semester && <p className="text-sm text-destructive">{errors.semester}</p>}
                 </div>
                 
@@ -170,6 +176,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
                     id="academic_year"
                     value={data.academic_year}
                     onChange={e => setData('academic_year', e.target.value)}
+                    placeholder="YYYY-YYYY"
                     required
                   />
                   {errors.academic_year && <p className="text-sm text-destructive">{errors.academic_year}</p>}
@@ -216,7 +223,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
                     min="0"
                     step="0.01"
                     value={data.total_budget}
-                    onChange={e => setData('total_budget', e.target.value)}
+                    onChange={e => setData('total_budget', parseFloat(e.target.value) || 0)}
                     required
                   />
                   {errors.total_budget && <p className="text-sm text-destructive">{errors.total_budget}</p>}
@@ -230,10 +237,23 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
                     min="0"
                     step="0.01"
                     value={data.per_student_budget}
-                    onChange={e => setData('per_student_budget', e.target.value)}
+                    onChange={e => setData('per_student_budget', parseFloat(e.target.value) || 0)}
                     required
                   />
                   {errors.per_student_budget && <p className="text-sm text-destructive">{errors.per_student_budget}</p>}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="available_slots">Available Slots</Label>
+                  <Input
+                    id="available_slots"
+                    type="number"
+                    min="0"
+                    value={data.available_slots}
+                    onChange={e => setData('available_slots', parseInt(e.target.value) || 0)}
+                    required
+                  />
+                  {errors.available_slots && <p className="text-sm text-destructive">{errors.available_slots}</p>}
                 </div>
               </div>
               
@@ -257,7 +277,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="min_gpa">Minimum GPA (%)</Label>
+                  <Label htmlFor="min_gpa">Minimum GPA (0-100%)</Label>
                   <Input
                     id="min_gpa"
                     type="number"
@@ -265,7 +285,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
                     max="100"
                     step="0.01"
                     value={data.min_gpa}
-                    onChange={e => setData('min_gpa', e.target.value)}
+                    onChange={e => setData('min_gpa', parseFloat(e.target.value) || 0)}
                     required
                   />
                   {errors.min_gpa && <p className="text-sm text-destructive">{errors.min_gpa}</p>}
@@ -278,7 +298,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
                     type="number"
                     min="0"
                     value={data.min_units || ''}
-                    onChange={e => setData('min_units', e.target.value ? Number(e.target.value) : null)}
+                    onChange={e => setData('min_units', e.target.value ? parseInt(e.target.value) : null)}
                     disabled={data.school_type_eligibility === 'high_school'}
                   />
                   {errors.min_units && <p className="text-sm text-destructive">{errors.min_units}</p>}
@@ -292,7 +312,7 @@ export default function Edit({ scholarship }: ScholarshipEditProps) {
                   type="number"
                   min="0"
                   value={data.community_service_days}
-                  onChange={e => setData('community_service_days', Number(e.target.value))}
+                  onChange={e => setData('community_service_days', parseInt(e.target.value) || 0)}
                   required
                 />
                 {errors.community_service_days && <p className="text-sm text-destructive">{errors.community_service_days}</p>}

@@ -58,6 +58,7 @@ final class ScholarshipController extends Controller
             'application_deadline' => ['required', 'date'],
             'community_service_days' => ['required', 'integer', 'min:0'],
             'active' => ['boolean'],
+            'available_slots' => ['required', 'integer', 'min:0'],
             'document_requirements' => ['array'],
             'document_requirements.*.name' => ['required_with:document_requirements', 'string', 'max:255'],
             'document_requirements.*.description' => ['required_with:document_requirements', 'string'],
@@ -77,6 +78,7 @@ final class ScholarshipController extends Controller
             'application_deadline' => $validated['application_deadline'],
             'community_service_days' => $validated['community_service_days'],
             'active' => $validated['active'] ?? true,
+            'available_slots' => $validated['available_slots'],
         ]);
 
         if (isset($validated['document_requirements'])) {
@@ -182,6 +184,7 @@ final class ScholarshipController extends Controller
             'application_deadline' => ['required', 'date'],
             'community_service_days' => ['required', 'integer', 'min:0'],
             'active' => ['boolean'],
+            'available_slots' => ['required', 'integer', 'min:0'],
             // Document requirements update is handled separately, usually via dedicated endpoints
             // or a more complex update logic if done here. For simplicity, not included in this update.
         ]);

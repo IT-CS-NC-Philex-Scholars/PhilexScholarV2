@@ -48,6 +48,7 @@ import {
     Info
 } from 'lucide-react';
 import { toast } from 'sonner';
+import MissingDocumentsOnboardingModal from './components/MissingDocumentsOnboardingModal';
 
 interface DocumentUploadItem {
     requirement: DocumentRequirement;
@@ -70,6 +71,8 @@ export default function Show({
     const [activeTab, setActiveTab] = useState('overview');
     const [showUploadDialog, setShowUploadDialog] = useState(false);
     const [selectedRequirement, setSelectedRequirement] = useState<DocumentRequirement | null>(null);
+    const [showMissingDocsModal, setShowMissingDocsModal] = useState(false);
+    const [startHighlightingUploads, setStartHighlightingUploads] = useState(false);
     
     // Helper functions
     const formatStatus = (status: string) => {
@@ -151,9 +154,49 @@ export default function Show({
     const totalDocs = documentUploads.length;
     const documentsProgress = totalDocs > 0 ? (approvedDocs / totalDocs) * 100 : 0;
 
+    useEffect(() => {
+        const missingOrRejectedDocsExist = documentUploads.some(
+            item => !item.upload || item.upload.status === 'rejected'
+        );
+
+        if (!missingOrRejectedDocsExist) {
+            setShowMissingDocsModal(false);
+            return;
+        }
+
+        const isDraft = application.status === 'draft';
+        const isDocsRejectedStatus = application.status === 'documents_rejected';
+        const actualRejectionsPresent = documentUploads.some(item => item.upload?.status === 'rejected');
+
+        if (isDraft || isDocsRejectedStatus || actualRejectionsPresent) {
+            setShowMissingDocsModal(true);
+        } else {
+            setShowMissingDocsModal(false);
+        }
+    }, [application.status, documentUploads]);
+
+    const handleGoToDocuments = () => {
+        setActiveTab('documents');
+        setShowMissingDocsModal(false);
+        setStartHighlightingUploads(true);
+    };
+
+    useEffect(() => {
+        if (activeTab !== 'documents' && startHighlightingUploads) {
+            setStartHighlightingUploads(false);
+        }
+    }, [activeTab, startHighlightingUploads]);
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Application Details" />
+            <MissingDocumentsOnboardingModal
+                isOpen={showMissingDocsModal}
+                onClose={() => setShowMissingDocsModal(false)}
+                documents={documentUploads}
+                onGoToDocuments={handleGoToDocuments}
+                applicationStatus={application.status}
+            />
 
             <div className="min-h-screen bg-background">
                 <div className="max-w-7xl mx-auto p-4 lg:p-6 space-y-6">
@@ -593,9 +636,13 @@ export default function Show({
                                                       (application.status === 'documents_rejected' && upload?.status.startsWith('rejected_'))) && (
                                                         <div className="flex gap-2">
                                                             <Button 
-                                                                onClick={() => openUploadDialog(requirement)}
+                                                                onClick={() => {
+                                                                    openUploadDialog(requirement);
+                                                                    setStartHighlightingUploads(false); // Turn off highlight on interaction
+                                                                }}
                                                                 size="sm"
                                                                 variant={upload ? "outline" : "default"}
+                                                                className={startHighlightingUploads && (!upload || upload.status.startsWith('rejected_')) ? 'animate-pulse ring-2 ring-primary ring-offset-2' : ''}
                                                             >
                                                                 <Upload className="h-4 w-4 mr-2" />
                                                                 {upload ? 'Replace' : 'Upload'}

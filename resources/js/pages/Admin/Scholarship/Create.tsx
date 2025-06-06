@@ -11,6 +11,25 @@ import { Label } from '@/components/ui/label';
 import { AlertCircle, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
+interface ScholarshipFormFields {
+  name: string;
+  description: string;
+  total_budget: number;
+  per_student_budget: number;
+  school_type_eligibility: string;
+  min_gpa: number;
+  min_units: number | null;
+  semester: string;
+  academic_year: string;
+  application_deadline: string;
+  community_service_days: number;
+  active: boolean;
+  available_slots: number;
+  document_requirements: DocumentRequirementForm[];
+}
+
+type ScholarshipFormData = ScholarshipFormFields & Record<string, any>;
+
 interface DocumentRequirementForm {
   id: number;
   name: string;
@@ -23,20 +42,21 @@ export default function Create() {
   // Track requirements being added
   const [requirements, setRequirements] = useState<DocumentRequirementForm[]>([]);
 
-  const { data, setData, post, errors, processing } = useForm({
+  const { data, setData, post, errors, processing } = useForm<ScholarshipFormData>({
     name: '',
     description: '',
     total_budget: 0,
     per_student_budget: 0,
     school_type_eligibility: 'both',
     min_gpa: 75, // Default minimum GPA
-    min_units: 12, // Default minimum units
+    min_units: 12, // Default minimum units, fits number | null
     semester: 'Fall',
     academic_year: '2024-2025',
     application_deadline: '',
     community_service_days: 5,
-    active: true,
-    document_requirements: [],
+    active: true, // Fits boolean
+    available_slots: 10, // Default available slots
+    document_requirements: [], // Fits DocumentRequirementForm[]
   });
 
   const breadcrumbs: BreadcrumbItem[] = [
@@ -127,12 +147,17 @@ export default function Create() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="semester">Semester</Label>
-                  <Input
-                    id="semester"
-                    value={data.semester}
-                    onChange={e => setData('semester', e.target.value)}
-                    required
-                  />
+                  <Select value={data.semester} onValueChange={value => setData('semester', value)}>
+                    <SelectTrigger id="semester">
+                      <SelectValue placeholder="Select semester" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1st Semester">1st Semester</SelectItem>
+                      <SelectItem value="2nd Semester">2nd Semester</SelectItem>
+                      <SelectItem value="Summer Term">Summer Term</SelectItem>
+                      <SelectItem value="Annual">Annual</SelectItem>
+                    </SelectContent>
+                  </Select>
                   {errors.semester && <p className="text-sm text-destructive">{errors.semester}</p>}
                 </div>
                 
@@ -142,6 +167,7 @@ export default function Create() {
                     id="academic_year"
                     value={data.academic_year}
                     onChange={e => setData('academic_year', e.target.value)}
+                    placeholder="YYYY-YYYY"
                     required
                   />
                   {errors.academic_year && <p className="text-sm text-destructive">{errors.academic_year}</p>}
@@ -179,7 +205,7 @@ export default function Create() {
               <CardDescription>Financial and eligibility requirements</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> {/* Changed to 3 columns for budget, per_student_budget, and available_slots */}
                 <div className="space-y-2">
                   <Label htmlFor="total_budget">Total Budget ($)</Label>
                   <Input
@@ -207,6 +233,19 @@ export default function Create() {
                   />
                   {errors.per_student_budget && <p className="text-sm text-destructive">{errors.per_student_budget}</p>}
                 </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="available_slots">Available Slots</Label>
+                  <Input
+                    id="available_slots"
+                    type="number"
+                    min="0"
+                    value={data.available_slots}
+                    onChange={e => setData('available_slots', parseInt(e.target.value) || 0)}
+                    required
+                  />
+                  {errors.available_slots && <p className="text-sm text-destructive">{errors.available_slots}</p>}
+                </div>
               </div>
               
               <div className="space-y-2">
@@ -229,7 +268,7 @@ export default function Create() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="min_gpa">Minimum GPA (%)</Label>
+                  <Label htmlFor="min_gpa">Minimum GPA (0-100%)</Label>
                   <Input
                     id="min_gpa"
                     type="number"

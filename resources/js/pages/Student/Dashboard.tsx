@@ -13,11 +13,13 @@ import {
   ChevronRightIcon, SearchIcon, MapPinIcon, BadgeIcon, CircleIcon,
   LayoutDashboardIcon, BriefcaseIcon, SparklesIcon, StarIcon, PlusIcon, ArrowRightIcon,
   ListChecks, ThumbsUp, Eye, MessageSquare, FileWarning, BarChart3, TargetIcon // Added new icons
-} from 'lucide-react';
+} from 'lucide-react'; // Existing icons
+import { UserCircle2, MailCheck, FileUp, Send as SendIconLucide } from 'lucide-react'; // Icons for onboarding steps, renamed Send to SendIconLucide
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import React, { useEffect, useState } from 'react'; // Ensure React is imported for JSX
+import React, { useEffect, useMemo, useState } from 'react'; // Ensure React is imported for JSX, added useMemo
 import { cn } from '@/lib/utils';
+import OnboardingStepsCard, { OnboardingStep } from './components/OnboardingStepsCard'; // Import the new component and its type
 
 interface DashboardProps {
   hasProfile: boolean;
@@ -265,11 +267,14 @@ const QuickStatsCard: React.FC<QuickStatsCardProps> = ({ applications, isLoaded 
 interface OverviewSectionProps {
   applications: ScholarshipApplication[];
   auth: any; 
+  hasProfile: boolean;
   isLoaded: boolean;
-  // Add any other props this section might need
+  setActiveSection: (section: string) => void;
+  onboardingSteps: OnboardingStep[]; // Added prop for onboarding steps
+  upcomingDeadlines: ScholarshipApplication[]; // Added prop for upcoming deadlines
 }
 
-const OverviewSection: React.FC<OverviewSectionProps> = ({ applications, auth, isLoaded }) => {
+const OverviewSection: React.FC<OverviewSectionProps> = ({ applications, auth, hasProfile, isLoaded, setActiveSection, onboardingSteps, upcomingDeadlines }) => {
   // Filter out any applications where app.scholarship might be null or undefined
   const validRecommendedScholarships = applications
     .slice(0, 2)
@@ -278,37 +283,73 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ applications, auth, i
 
   return (
     <div className={cn("space-y-6 transition-all duration-500 ease-out", isLoaded ? "opacity-100" : "opacity-0")}>
-      <Card className="shadow-sm hover:shadow-md transition-shadow">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><TargetIcon className="h-5 w-5 text-primary" /> Recommended For You</CardTitle>
-          <CardDescription>Based on your profile and activity.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {validRecommendedScholarships.length > 0 ? (
-            <ul className="space-y-3">
-              {validRecommendedScholarships.map(scholarship => (
-                <li key={scholarship.id} className="p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors flex justify-between items-center">
-                  <div>
-                    <h4 className="font-semibold">{scholarship.title}</h4>
-                    <p className="text-sm text-muted-foreground">Amount: ${scholarship.amount.toLocaleString()}</p>
-                  </div>
-                  <Button asChild variant="outline" size="sm">
-                    <Link href={route('student.scholarships.show', scholarship.id)}>View <ArrowRightIcon className="h-4 w-4 ml-2"/></Link>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-muted-foreground">No specific recommendations right now. Explore available scholarships!</p>
-          )}
-        </CardContent>
-         <CardFooter>
-            <Button asChild variant="default" className="w-full md:w-auto">
-                <Link href={route('student.scholarships.index')}>Browse All Scholarships <SearchIcon className="h-4 w-4 ml-2"/></Link>
-            </Button>
-        </CardFooter>
-      </Card>
-      {/* Add more overview components here, e.g., recent activity, tips, etc. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <OnboardingStepsCard
+            steps={onboardingSteps}
+            isLoaded={isLoaded}
+          />
+          <Card className={cn("transition-all duration-500 ease-out", isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")}>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <StarIcon className="h-5 w-5 text-primary" /> Recommended For You
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {validRecommendedScholarships.length > 0 ? (
+                <ul className="space-y-3">
+                  {validRecommendedScholarships.map(scholarship => (
+                    <li key={scholarship.id} className="p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">{scholarship.name}</h4>
+                        <p className="text-sm text-muted-foreground">Deadline: {new Date(scholarship.deadline).toLocaleDateString()}</p>
+                      </div>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={route('scholarships.show', scholarship.id)}>View <ChevronRightIcon className="h-4 w-4 ml-1"/></Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground">No specific recommendations right now. Explore available scholarships!</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        <div className="lg:col-span-1">
+          <Card className={cn("transition-all duration-500 ease-out", isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4")}>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-primary" /> Upcoming Deadlines
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {upcomingDeadlines.length > 0 ? (
+                <ul className="space-y-3">
+                  {upcomingDeadlines.map(deadline => (
+                    <li key={deadline.id} className="p-3 rounded-md border bg-background hover:bg-muted/50 transition-colors flex justify-between items-center">
+                      <div>
+                        <h4 className="font-semibold">{deadline.scholarship?.title}</h4>
+                        <p className="text-sm text-muted-foreground">Apply by: {new Date(deadline.scholarship?.deadline).toLocaleDateString()}</p>
+                      </div>
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={route('student.applications.show', deadline.id)}>View <ArrowRightIcon className="h-4 w-4 ml-2"/></Link>
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-muted-foreground">No upcoming deadlines at the moment. Great job!</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+      <CardFooter>
+        <Button asChild variant="default" className="w-full md:w-auto">
+          <Link href={route('student.scholarships.index')}>Browse All Scholarships <SearchIcon className="h-4 w-4 ml-2"/></Link>
+        </Button>
+      </CardFooter>
     </div>
   );
 };
@@ -316,7 +357,7 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({ applications, auth, i
 interface ApplicationsSectionProps {
   applications: ScholarshipApplication[];
   getStatusColor: (status: string) => string;
-  getStatusIcon: (status: string) => React.ReactNode; // Changed JSX.Element to React.ReactNode
+  getStatusIcon: (status: string) => React.ReactNode; 
   getApplicationProgress: (status: string) => number;
   isLoaded: boolean;
   auth: any;
@@ -428,7 +469,7 @@ const ScholarshipsSection: React.FC<{isLoaded: boolean}> = ({isLoaded}) => {
 
 // --- Main Dashboard Component ---
 
-export default function Dashboard({ hasProfile, applications }: DashboardProps) {
+const Dashboard: React.FC<DashboardProps> = ({ hasProfile, applications }) => {
   const { auth } = usePage().props as any;
   
   const overallProgress = applications.length > 0 
@@ -451,6 +492,53 @@ export default function Dashboard({ hasProfile, applications }: DashboardProps) 
     .filter(app => ['draft', 'submitted'].includes(app.status) && new Date((app as any).scholarship?.deadline) > new Date())
     .sort((a,b) => new Date((a as any).scholarship?.deadline).getTime() - new Date((b as any).scholarship?.deadline).getTime())
     .slice(0, 3);
+
+  const user = auth.user;
+
+  // Define onboarding steps
+  const onboardingSteps = useMemo(() => [
+    {
+      id: 'complete_profile',
+      title: 'Complete Your Profile',
+      description: 'Fill in your personal details to get started.',
+      icon: UserCircle2,
+      isCompleted: hasProfile,
+      ctaLink: route('student.profile.edit'),
+      ctaText: 'Go to Profile',
+    },
+    {
+      id: 'verify_email',
+      title: 'Verify Your Email',
+      description: 'Ensure your email is verified to receive important updates.',
+      icon: MailCheck,
+      isCompleted: !!user?.email_verified_at,
+      // ctaLink: user?.email_verified_at ? undefined : route('verification.notice'), // Example: Link to verification notice if not verified
+      ctaText: user?.email_verified_at ? 'Verified' : 'Verify Email',
+    },
+    {
+      id: 'upload_documents',
+      title: 'Upload Required Documents',
+      description: 'Submit necessary documents for your applications.',
+      icon: FileUp,
+      // Simplified logic: assumes if any application is past 'documents_under_review', some docs are likely handled.
+      // A more robust check might involve a specific user flag or document count.
+      isCompleted: applications.some(app => 
+        ['documents_approved', 'eligibility_verified', 'enrolled', 'service_completed', 'completed', 'disbursement_processed'].includes(app.status)
+      ),
+      // Link to the applications page, or a specific document upload page if available.
+      ctaLink: route('student.applications.index'), 
+      ctaText: 'Manage Documents',
+    },
+    {
+      id: 'submit_application',
+      title: 'Submit Your First Application',
+      description: 'Apply for a scholarship to kickstart your journey.',
+      icon: SendIconLucide, // Use the renamed icon
+      isCompleted: applications.some(app => app.status !== 'draft'),
+      action: () => setActiveSection('scholarships'), 
+      ctaText: 'Find Scholarships',
+    },
+  ], [hasProfile, user, applications, setActiveSection]);
 
   return (
     <AppLayout breadcrumbs={breadcrumbs}>
@@ -480,7 +568,7 @@ export default function Dashboard({ hasProfile, applications }: DashboardProps) 
             {/* Dynamically render content based on activeSection */}
             <div className="mt-4">
                 {activeSection === 'overview' && 
-                    <OverviewSection applications={applications} auth={auth} isLoaded={isLoaded} />}
+                    <OverviewSection applications={applications} auth={auth} isLoaded={isLoaded} setActiveSection={setActiveSection} hasProfile={hasProfile} onboardingSteps={onboardingSteps} upcomingDeadlines={upcomingDeadlines} />}
                 {activeSection === 'applications' && 
                     <ApplicationsSection 
                         applications={applications} 
@@ -526,3 +614,5 @@ export default function Dashboard({ hasProfile, applications }: DashboardProps) 
     </AppLayout>
   );
 }
+
+export default Dashboard;
