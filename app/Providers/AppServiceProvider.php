@@ -75,6 +75,9 @@ final class AppServiceProvider extends ServiceProvider
     private function configureUrl(): void
     {
         URL::forceHttps(App::isProduction());
+        $this->app['request']->server->set('HTTPS', true) ///here ;
+
+
     }
 
     /**
