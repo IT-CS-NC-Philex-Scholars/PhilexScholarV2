@@ -23,7 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'student' => App\Http\Middleware\EnsureUserIsStudent::class,
             'admin' => App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
-
+        $middleware->trustProxies(at: "*");
         $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
