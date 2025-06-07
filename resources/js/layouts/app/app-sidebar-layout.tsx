@@ -29,7 +29,7 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
     return (
         <NotificationProvider>
             <AppShell variant="sidebar">
-                <AppSidebar />
+                <AppSidebar variant="inset" />
                 <AppContent variant="sidebar">
                     <AppSidebarHeader breadcrumbs={breadcrumbs} />
                     {children}
