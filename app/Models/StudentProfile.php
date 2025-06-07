@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * @property int $id
- * @property int $user_id
+ * @property int|null $user_id
  * @property string $address
  * @property string $city
  * @property string $state
@@ -20,6 +20,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $school_type
  * @property string $school_level
  * @property string $school_name
+ * @property string|null $email
+ * @property string $status
+ * @property string|null $first_name
+ * @property string|null $last_name
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  * @property-read User $user
@@ -35,6 +39,10 @@ final class StudentProfile extends Model
      * @var list<string>
      */
     protected $fillable = [
+        'first_name',
+        'last_name',
+        'email',
+        'status',
         'user_id',
         'address',
         'city',
@@ -72,6 +80,7 @@ final class StudentProfile extends Model
     protected function casts(): array
     {
         return [
+            'status' => 'string',
             'school_type' => 'string',
             'student_id' => 'string',
             'gpa' => 'float',

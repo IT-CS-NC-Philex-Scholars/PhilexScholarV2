@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\StudentProfile;
 // ScholarshipApplication is used in the show method, but not directly queried here for index/show student lists
 // use App\Models\ScholarshipApplication;
 use Illuminate\Http\Request;
@@ -17,52 +18,121 @@ use Inertia\Response;
 final class StudentController extends Controller
 {
     /**
+     * Show the form for creating a new student profile.
+     */
+    public function create(): Response
+    {
+        return Inertia::render('Admin/Student/Create');
+    }
+
+    /**
+     * Store a newly created student profile in storage.
+     */
+    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    {
+        // Prepare GPA input
+        $gpaInput = $request->input('gpa');
+        if ($gpaInput && is_string($gpaInput)) {
+            $numericGpa = trim(str_replace('%', '', $gpaInput));
+            // Ensure that after stripping '%', the value is actually numeric or empty
+            if ($numericGpa === '' || is_numeric($numericGpa)) {
+                $request->merge(['gpa' => $numericGpa === '' ? null : $numericGpa]);
+            } else {
+                // If it's not numeric after stripping (e.g., "abc%"), set to null to let validation catch it as non-numeric if required, or handle as an error
+                $request->merge(['gpa' => null]); 
+            }
+        } elseif (is_numeric($gpaInput)) {
+            // It's already a number, do nothing
+        } elseif ($gpaInput !== null) { // If it's not null, not a string, and not numeric (e.g. empty array from form)
+             $request->merge(['gpa' => null]);
+        }
+        // If $gpaInput was null initially, it remains null, which is fine for 'nullable' validation.
+
+        $validatedData = $request->validate([
+            'first_name' => 'required|string|max:255', // Assuming you'll store first/last name separately or combine them
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:student_profiles,email', // Unique in student_profiles table
+            'address' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'state' => 'required|string|max:255',
+            'zip_code' => 'required|string|max:255',
+            'phone_number' => 'required|string|max:20',
+            'school_type' => 'required|in:high_school,college',
+            'school_level' => 'required|string|max:255',
+            'school_name' => 'required|string|max:255',
+            'student_id_number' => 'nullable|string|max:255', // Assuming 'student_id' in model is this
+            'gpa' => 'nullable|numeric|min:0|max:100', // Updated max to 100
+        ]);
+
+        // Create the student profile
+        $studentProfile = StudentProfile::create([
+            'first_name' => $validatedData['first_name'],
+            'last_name' => $validatedData['last_name'],
+            'user_id' => null, // No user associated yet
+            'email' => $validatedData['email'],
+            'status' => 'unclaimed',
+            'address' => $validatedData['address'],
+            'city' => $validatedData['city'],
+            'state' => $validatedData['state'],
+            'zip_code' => $validatedData['zip_code'],
+            'phone_number' => $validatedData['phone_number'],
+            'school_type' => $validatedData['school_type'],
+            'school_level' => $validatedData['school_level'],
+            'school_name' => $validatedData['school_name'],
+            'student_id' => $validatedData['student_id_number'] ?? null, // Ensure key matches model's fillable
+            'gpa' => $validatedData['gpa'] ?? null,
+        ]);
+
+        return redirect()->route('admin.students.index')->with('success', 'Student profile created successfully.');
+        // Or redirect to a show page for this new profile if you create one that doesn't rely on a User model yet.
+        // return redirect()->route('admin.student_profiles.show', $studentProfile->id)->with('success', 'Student profile created successfully.');
+    }
+
+    /**
      * Display a listing of all students.
      */
     public function index(Request $request): Response
     {
-        $query = \App\Models\User::query()->where('role', 'student')
-            ->with(['studentProfile' => function ($query): void {
-                // Ensure all necessary fields from student_profiles are selected
-                // select('*') is default but explicit can be fine.
-                $query->select('*');
-            }]);
+        $query = StudentProfile::query()
+            ->with('user'); // Eager load the associated user, if any
 
-        if ($request->has('search') && ! empty($request->search)) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search): void {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhereHas('studentProfile', function ($sq) use ($search): void {
-                        $sq->where('student_id', 'like', "%{$search}%")
-                            ->orWhere('school_name', 'like', "%{$search}%");
-                    });
+        // Apply search filter
+        if ($request->filled('search')) {
+            $searchTerm = $request->input('search');
+            $query->where(function ($q) use ($searchTerm): void {
+                // Search on StudentProfile fields
+                $q->where('first_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('last_name', 'like', "%{$searchTerm}%")
+                  ->orWhere('email', 'like', "%{$searchTerm}%") // StudentProfile email
+                  ->orWhere('student_id', 'like', "%{$searchTerm}%")
+                  ->orWhere('school_name', 'like', "%{$searchTerm}%")
+                  // Search on related User fields
+                  ->orWhereHas('user', function ($userQuery) use ($searchTerm): void {
+                      $userQuery->where('name', 'like', "%{$searchTerm}%")
+                                ->orWhere('email', 'like', "%{$searchTerm}%"); // User email
+                  });
             });
         }
 
-        if ($request->has('filter_school_type') && $request->filter_school_type !== 'all') {
-            $query->whereHas('studentProfile', function ($q) use ($request): void {
-                $q->where('school_type', $request->filter_school_type);
-            });
+        // Apply school type filter
+        if ($request->filled('filter_school_type') && $request->input('filter_school_type') !== 'all') {
+            $schoolType = $request->input('filter_school_type');
+            $query->where('school_type', $schoolType);
         }
 
-        $studentsPaginator = $query->latest()->paginate(15)->withQueryString();
-
-        // Transform each student item in the pagination data
-        $studentsPaginator->through(function ($student) {
-            $studentData = $student->toArray(); // Convert model to array
-            if (isset($studentData['student_profile'])) {
-                $studentData['studentProfile'] = $studentData['student_profile'];
-                unset($studentData['student_profile']);
-            }
-
-            // Ensure other relationships are handled if they were snake_case and needed camelCase
-            // For now, only student_profile is being explicitly handled.
-            return $studentData;
-        });
+        $studentProfilesPaginator = $query->orderBy('created_at', 'desc')
+            ->paginate(10)
+            ->through(function ($profile) {
+                $profileData = $profile->toArray();
+                // The 'user' relationship will already be an object or null due to toArray() and eager loading.
+                // If user exists, it's $profileData['user']. If not, $profileData['user'] will be null.
+                // No specific snake_case to camelCase transformation needed here for 'user' as it's a direct relationship name.
+                return $profileData;
+            });
 
         return Inertia::render('Admin/Student/Index', [
-            'students' => $studentsPaginator,
+            // Rename 'students' to 'studentProfiles' for clarity, or adjust frontend to expect this structure under 'students'
+            'studentProfiles' => $studentProfilesPaginator, 
             'filters' => $request->only(['search', 'filter_school_type']),
         ]);
     }

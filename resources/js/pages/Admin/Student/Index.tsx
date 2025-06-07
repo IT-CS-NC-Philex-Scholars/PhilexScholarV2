@@ -7,11 +7,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, StudentProfile, User } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { GraduationCap, Mail, School, Search, User as UserIcon, Users } from 'lucide-react';
+import { GraduationCap, Mail, School, Search, User as UserIcon, Users, UserPlus } from 'lucide-react';
 
 interface StudentIndexProps {
-    students: {
-        data: (User & { studentProfile?: StudentProfile })[];
+    studentProfiles: {
+        data: (StudentProfile & { user?: User })[]; // Changed: now array of StudentProfile with optional User
         current_page: number;
         last_page: number;
         per_page: number;
@@ -23,7 +23,7 @@ interface StudentIndexProps {
     };
 }
 
-export default function Index({ students, filters }: StudentIndexProps) {
+export default function Index({ studentProfiles, filters }: StudentIndexProps) { // Changed: students to studentProfiles
     const { data, setData, get, processing } = useForm({
         search: filters.search || '',
         filter_school_type: filters.filter_school_type || 'all',
@@ -41,20 +41,12 @@ export default function Index({ students, filters }: StudentIndexProps) {
     const applyFilters = () => {
         get(route('admin.students.index'));
     };
-    // Add these lines for debugging
-    console.log('Full students prop received by frontend:', students);
-    if (students && students.data) {
-        console.log('Students data array:', students.data);
-        students.data.forEach((student, index) => {
-            console.log(`Student[${index}] ID: ${student.id}`);
-            console.log(`  - Has 'studentProfile' (camelCase) key:`, student.hasOwnProperty('studentProfile'));
-            console.log(`  - Value of student.studentProfile:`, student.studentProfile);
-            console.log(`  - Has 'student_profile' (snake_case) key:`, student.hasOwnProperty('student_profile'));
-            console.log(`  - Value of student.student_profile:`, (student as any).student_profile); // Use 'as any' to check snake_case
-        });
-    }
-    // Existing line:
-    // {students.data.map((student) => (
+    // console.log('Full studentProfiles prop:', studentProfiles); // Debugging line, can be removed
+    // if (studentProfiles && studentProfiles.data) { // Debugging block, can be removed
+    //     studentProfiles.data.forEach((profile, index) => {
+    //         console.log(`Profile[${index}] ID: ${profile.id}, User:`, profile.user);
+    //     });
+    // }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -62,9 +54,17 @@ export default function Index({ students, filters }: StudentIndexProps) {
 
             <div className="container mx-auto px-4 py-6">
                 <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
-                    <div>
+                    <div className="flex-1">
                         <h1 className="mb-1 text-2xl font-bold md:text-3xl">Students</h1>
                         <p className="text-muted-foreground">Manage and view all student accounts and their scholarship applications</p>
+                    </div>
+                    <div>
+                        <Button asChild>
+                            <Link href={route('admin.students.create')}>
+                                <UserPlus className="mr-2 h-4 w-4" />
+                                Create New Student
+                            </Link>
+                        </Button>
                     </div>
                 </div>
 
@@ -120,7 +120,7 @@ export default function Index({ students, filters }: StudentIndexProps) {
                 </Card>
 
                 {/* Students List */}
-                {students.data.length === 0 ? (
+                {studentProfiles.data.length === 0 ? (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-8">
                             <Users className="text-muted-foreground mb-4 h-12 w-12" />
@@ -132,87 +132,92 @@ export default function Index({ students, filters }: StudentIndexProps) {
                     </Card>
                 ) : (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                        {students.data.map((student) => (
-                            <Card key={student.id} className="border-l-primary overflow-hidden border-l-4 transition-shadow hover:shadow-md">
-                                <CardContent className="p-0">
-                                    <div className="bg-muted/20 flex items-center gap-4 border-b p-4">
-                                        <Avatar className="border-primary/20 h-12 w-12 border-2">
-                                            <div className="bg-primary/10 text-primary flex h-full w-full items-center justify-center rounded-full text-lg font-semibold">
-                                                {student.name.charAt(0)}
-                                            </div>
-                                        </Avatar>
-                                        <div className="min-w-0 flex-1">
-                                            <h3 className="truncate text-lg font-semibold">{student.name}</h3>
-                                            <div className="text-muted-foreground flex items-center text-sm">
-                                                <Mail className="mr-1 h-3.5 w-3.5" />
-                                                <span className="truncate">{student.email}</span>
+                        {studentProfiles.data.map((profile) => {
+                            const displayName = profile.user ? profile.user.name : `${profile.first_name} ${profile.last_name}`.trim();
+                            const displayEmail = profile.user ? profile.user.email : profile.email;
+                            const avatarFallback = displayName.split(' ').map(n => n[0]).join('').toUpperCase() || '?';
+
+                            return (
+                                <Card key={profile.id} className="border-l-primary overflow-hidden border-l-4 shadow-sm transition-shadow hover:shadow-md">
+                                    <CardContent className="p-0">
+                                        <div className="bg-muted/20 flex items-center gap-4 border-b p-4">
+                                            <Avatar className="h-12 w-12 border-primary/20 border-2">
+                                                <div className="bg-primary/10 text-primary flex h-full w-full items-center justify-center rounded-full text-lg font-semibold">
+                                                    {avatarFallback}
+                                                </div>
+                                            </Avatar>
+                                            <div className="min-w-0 flex-1">
+                                                <h3 className="truncate text-lg font-semibold">{displayName}</h3>
+                                                <div className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                                                    <Mail className="mr-1 h-3.5 w-3.5" />
+                                                    <span className="truncate">{displayEmail}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="p-4">
-                                        {student.studentProfile ? (
-                                            <>
+                                        <div className="mt-3 border-t pt-3">
+                                            {/* Profile details are now directly on 'profile' */}
+                                            <div>
                                                 <div className="mb-4 grid grid-cols-2 gap-y-3">
                                                     <div className="flex items-center gap-1.5">
                                                         <UserIcon className="text-muted-foreground h-4 w-4" />
                                                         <span className="text-sm">
-                                                            ID: <span className="font-medium">{student.studentProfile.student_id || 'Not set'}</span>
+                                                            ID: <span className="font-medium">{profile.student_id || 'Not set'}</span>
                                                         </span>
                                                     </div>
                                                     <div className="flex items-center gap-1.5">
                                                         <GraduationCap className="text-muted-foreground h-4 w-4" />
                                                         <span className="text-sm">
-                                                            GPA: <span className="font-medium">{student.studentProfile.gpa || 'Not set'}</span>
+                                                            GPA: <span className="font-medium">{profile.gpa || 'Not set'}</span>
                                                         </span>
                                                     </div>
                                                     <div className="col-span-2 flex items-center gap-1.5">
                                                         <School className="text-muted-foreground h-4 w-4" />
                                                         <span className="truncate text-sm">
-                                                            {student.studentProfile.school_name || 'School not set'}
+                                                            {profile.school_name || 'School not set'}
                                                         </span>
                                                     </div>
                                                 </div>
 
                                                 <div className="flex items-center justify-between">
-                                                    <Badge variant={student.studentProfile.school_type === 'high_school' ? 'outline' : 'secondary'}>
-                                                        {student.studentProfile.school_type === 'high_school' ? 'High School' : 'College'}
+                                                    <Badge variant={profile.school_type === 'high_school' ? 'outline' : 'secondary'}>
+                                                        {profile.school_type === 'high_school' ? 'High School' : 'College'}
                                                     </Badge>
-                                                    <Button asChild size="sm">
-                                                        <Link href={route('admin.students.show', student.id)}>View Profile</Link>
-                                                    </Button>
+                                                    {profile.user ? (
+                                                        <Button asChild size="sm">
+                                                            <Link href={route('admin.students.show', profile.user.id)}>View Profile</Link>
+                                                        </Button>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-xs">
+                                                            Profile Unclaimed
+                                                        </Badge>
+                                                    )}
                                                 </div>
-                                            </>
-                                        ) : (
-                                            <div className="flex flex-col items-center justify-center py-3 text-center">
-                                                <p className="text-muted-foreground mb-3 text-sm">Student profile not yet created</p>
-                                                <Button asChild size="sm">
-                                                    <Link href={route('admin.students.show', student.id)}>View Profile</Link>
-                                                </Button>
                                             </div>
-                                        )}
-                                    </div>
+                                            {/* End of profile details section */}
+                                        </div>
                                 </CardContent>
                             </Card>
-                        ))}
+                        );
+                    })}
                     </div>
                 )}
 
                 {/* Pagination */}
-                {students.last_page > 1 && (
+                {studentProfiles.last_page > 1 && (
                     <div className="mt-6 flex items-center justify-between">
                         <div className="text-muted-foreground text-sm">
-                            Showing {students.data.length} of {students.total} students
+                                                        Showing {studentProfiles.data.length} of {studentProfiles.total} students
                         </div>
                         <div className="flex gap-2">
-                            {students.current_page > 1 && (
+                            {studentProfiles.current_page > 1 && (
                                 <Button asChild variant="outline" size="sm">
-                                    <Link href={route('admin.students.index', { page: students.current_page - 1, ...filters })}>Previous</Link>
+                                                                        <Link href={route('admin.students.index', { page: studentProfiles.current_page - 1, ...filters })}>Previous</Link>
                                 </Button>
                             )}
-                            {students.current_page < students.last_page && (
+                            {studentProfiles.current_page < studentProfiles.last_page && (
                                 <Button asChild variant="outline" size="sm">
-                                    <Link href={route('admin.students.index', { page: students.current_page + 1, ...filters })}>Next</Link>
+                                                                        <Link href={route('admin.students.index', { page: studentProfiles.current_page + 1, ...filters })}>Next</Link>
                                 </Button>
                             )}
                         </div>
