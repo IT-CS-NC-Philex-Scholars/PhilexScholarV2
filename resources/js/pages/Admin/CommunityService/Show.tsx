@@ -13,8 +13,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
@@ -41,6 +42,7 @@ import {
     CheckCircle,
     AlertCircle,
     TrendingUp,
+    Upload,
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -195,6 +197,16 @@ export default function Show({ report, entries = [] }: ShowPageProps) {
     const [currentEntryForUndo, setCurrentEntryForUndo] = useState<CommunityServiceEntry | null>(null);
     const undoForm = useForm({});
     const [approvedHours, setApprovedHours] = useState<number>(0);
+    const [isCreateReportModalOpen, setIsCreateReportModalOpen] = useState(false);
+
+    // Admin report creation form
+    const adminReportForm = useForm({
+        description: '',
+        total_hours: '',
+        days_completed: '',
+        pdf_file: null as File | null,
+        admin_notes: '',
+    });
 
     const requiredServiceHours = scholarshipProgram.community_service_days * HOURS_PER_DAY;
 
@@ -421,6 +433,26 @@ export default function Show({ report, entries = [] }: ShowPageProps) {
         });
     };
 
+    const handleAdminReportSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        adminReportForm.post(route('admin.community-service.create-report', { 
+            application: report.scholarship_application_id 
+        }), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsCreateReportModalOpen(false);
+                adminReportForm.reset();
+                toast.success('Community service report created successfully.');
+            },
+            onError: (errors: Record<string, string>) => {
+                toast.error('Failed to create report.', { 
+                    description: Object.values(errors).join('\n') || 'An unknown error occurred.' 
+                });
+            }
+        });
+    };
+
     const pdfDownloadUrl =
         report.pdf_report_path && report.report_type === 'pdf_upload'
             ? route('admin.community-service.reports.download-pdf', { report: report.id })
@@ -523,6 +555,30 @@ export default function Show({ report, entries = [] }: ShowPageProps) {
                                     </Card>
                                 </>
                             )}
+                        </div>
+
+                        {/* Admin Tools */}
+                        <div className="flex flex-col lg:flex-row gap-4 p-6 bg-gradient-to-r from-blue-50/50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/30 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm">
+                            <div className="flex-1 space-y-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                                    <p className="font-semibold text-foreground">Admin Tools</p>
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                    Create additional reports or manage community service entries
+                                </p>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Button 
+                                    onClick={() => setIsCreateReportModalOpen(true)}
+                                    variant="outline"
+                                    className="shadow-md hover:shadow-lg transition-all duration-200"
+                                    size="lg"
+                                >
+                                    <Upload className="h-4 w-4 mr-2" />
+                                    Create Report
+                                </Button>
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
@@ -1168,6 +1224,126 @@ export default function Show({ report, entries = [] }: ShowPageProps) {
                                         </div>
                                     ) : (
                                         'Undo Approval'
+                                    )}
+                                </Button>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+
+                    {/* Create Report Modal */}
+                    <AlertDialog open={isCreateReportModalOpen} onOpenChange={setIsCreateReportModalOpen}>
+                        <AlertDialogContent className="max-w-lg">
+                            <AlertDialogHeader>
+                                <AlertDialogTitle className="flex items-center gap-2">
+                                    <Upload className="h-5 w-5 text-blue-600" />
+                                    Create Community Service Report
+                                </AlertDialogTitle>
+                                <AlertDialogDescription className="text-muted-foreground">
+                                    Create a community service report on behalf of the student. This can include PDF uploads or manual entry.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <form onSubmit={handleAdminReportSubmit} className="space-y-4 py-4">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <Label htmlFor="total_hours" className="text-sm font-medium">
+                                            Total Hours *
+                                        </Label>
+                                        <Input
+                                            id="total_hours"
+                                            type="number"
+                                            step="0.1"
+                                            min="0"
+                                            value={adminReportForm.data.total_hours}
+                                            onChange={(e) => adminReportForm.setData('total_hours', e.target.value)}
+                                            placeholder="e.g., 40"
+                                            disabled={adminReportForm.processing}
+                                            className="mt-1"
+                                        />
+                                        {adminReportForm.errors.total_hours && (
+                                            <p className="mt-1 text-xs text-red-500">{adminReportForm.errors.total_hours}</p>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <Label htmlFor="days_completed" className="text-sm font-medium">
+                                            Days Completed *
+                                        </Label>
+                                        <Input
+                                            id="days_completed"
+                                            type="number"
+                                            min="0"
+                                            value={adminReportForm.data.days_completed}
+                                            onChange={(e) => adminReportForm.setData('days_completed', e.target.value)}
+                                            placeholder="e.g., 5"
+                                            disabled={adminReportForm.processing}
+                                            className="mt-1"
+                                        />
+                                        {adminReportForm.errors.days_completed && (
+                                            <p className="mt-1 text-xs text-red-500">{adminReportForm.errors.days_completed}</p>
+                                        )}
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label htmlFor="description" className="text-sm font-medium">
+                                        Description *
+                                    </Label>
+                                    <Textarea
+                                        id="description"
+                                        value={adminReportForm.data.description}
+                                        onChange={(e) => adminReportForm.setData('description', e.target.value)}
+                                        placeholder="Describe the community service activities performed..."
+                                        disabled={adminReportForm.processing}
+                                        className="mt-1 min-h-[80px]"
+                                    />
+                                    {adminReportForm.errors.description && (
+                                        <p className="mt-1 text-xs text-red-500">{adminReportForm.errors.description}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="pdf_file" className="text-sm font-medium">
+                                        PDF Report (Optional)
+                                    </Label>
+                                    <Input
+                                        id="pdf_file"
+                                        type="file"
+                                        accept=".pdf"
+                                        onChange={(e) => adminReportForm.setData('pdf_file', e.target.files?.[0] || null)}
+                                        disabled={adminReportForm.processing}
+                                        className="mt-1"
+                                    />
+                                    {adminReportForm.errors.pdf_file && (
+                                        <p className="mt-1 text-xs text-red-500">{adminReportForm.errors.pdf_file}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="admin_notes" className="text-sm font-medium">
+                                        Admin Notes
+                                    </Label>
+                                    <Textarea
+                                        id="admin_notes"
+                                        value={adminReportForm.data.admin_notes}
+                                        onChange={(e) => adminReportForm.setData('admin_notes', e.target.value)}
+                                        placeholder="Notes about this report creation (e.g., 'Created from hardcopy documentation')"
+                                        disabled={adminReportForm.processing}
+                                        className="mt-1"
+                                    />
+                                </div>
+                            </form>
+                            <AlertDialogFooter className="gap-2">
+                                <AlertDialogCancel disabled={adminReportForm.processing}>
+                                    Cancel
+                                </AlertDialogCancel>
+                                <Button
+                                    onClick={handleAdminReportSubmit}
+                                    disabled={adminReportForm.processing || !adminReportForm.data.description || !adminReportForm.data.total_hours || !adminReportForm.data.days_completed}
+                                    className="min-w-[120px]"
+                                >
+                                    {adminReportForm.processing ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                            Creating...
+                                        </div>
+                                    ) : (
+                                        'Create Report'
                                     )}
                                 </Button>
                             </AlertDialogFooter>

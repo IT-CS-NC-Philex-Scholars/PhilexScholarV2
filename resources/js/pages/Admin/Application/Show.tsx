@@ -13,6 +13,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/layouts/app-layout';
@@ -47,6 +49,7 @@ import {
     Info,
     ListChecks,
     MessageSquare,
+    Upload,
     XCircle,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -305,6 +308,14 @@ export default function Show({
         });
         const { data, setData, post, processing, errors, reset } = docForm;
 
+        // Admin upload form
+        const adminUploadForm = useForm({
+            document_file: null as File | null,
+            admin_notes: '',
+        });
+
+        const [isAdminUploadModalOpen, setIsAdminUploadModalOpen] = useState(false);
+
         useEffect(() => {
             // Keep form in sync if upload prop changes (e.g., after successful review)
             setData({
@@ -326,16 +337,84 @@ export default function Show({
             });
         };
 
+        const handleAdminUpload = (e: React.FormEvent) => {
+            e.preventDefault();
+            if (!adminUploadForm.data.document_file) return;
+
+            adminUploadForm.post(route('admin.documents.upload-for-student', { 
+                application: application.id, 
+                requirement: docReq.id 
+            }), {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsAdminUploadModalOpen(false);
+                    adminUploadForm.reset();
+                },
+            });
+        };
+
         if (!upload) {
             return (
-                <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950">
-                    <div className="flex items-center gap-2">
-                        <FileClock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
-                        <p className="dark:text-yellow-300\\ text-sm font-medium text-yellow-700">Document Not Uploaded</p>
+                <div className="space-y-3">
+                    <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950">
+                        <div className="flex items-center gap-2">
+                            <FileClock className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+                            <p className="dark:text-yellow-300\\ text-sm font-medium text-yellow-700">Document Not Uploaded</p>
+                        </div>
+                        <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
+                            This {docReq.is_required ? 'required' : 'optional'} document has not been submitted by the student.
+                        </p>
                     </div>
-                    <p className="mt-1 text-xs text-yellow-600 dark:text-yellow-400">
-                        This {docReq.is_required ? 'required' : 'optional'} document has not been submitted by the student.
-                    </p>
+                    
+                    <Dialog open={isAdminUploadModalOpen} onOpenChange={setIsAdminUploadModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="w-full">
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload for Student
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Upload Document for Student</DialogTitle>
+                                <DialogDescription>
+                                    Upload this document on behalf of the student (e.g., from hardcopy submission).
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleAdminUpload} className="space-y-4">
+                                <div>
+                                    <Label htmlFor="document_file">Document File</Label>
+                                    <Input
+                                        id="document_file"
+                                        type="file"
+                                        onChange={(e) => adminUploadForm.setData('document_file', e.target.files?.[0] || null)}
+                                        className="mt-1"
+                                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    />
+                                    {adminUploadForm.errors.document_file && (
+                                        <p className="mt-1 text-xs text-red-500">{adminUploadForm.errors.document_file}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="admin_notes">Admin Notes</Label>
+                                    <Textarea
+                                        id="admin_notes"
+                                        value={adminUploadForm.data.admin_notes}
+                                        onChange={(e) => adminUploadForm.setData('admin_notes', e.target.value)}
+                                        placeholder="Note about this upload (e.g., 'Uploaded from hardcopy submission')"
+                                        className="mt-1"
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild>
+                                        <Button type="button" variant="outline">Cancel</Button>
+                                    </DialogClose>
+                                    <Button type="submit" disabled={adminUploadForm.processing || !adminUploadForm.data.document_file}>
+                                        {adminUploadForm.processing ? 'Uploading...' : 'Upload Document'}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             );
         }
@@ -376,6 +455,55 @@ export default function Show({
                             Download
                         </a>
                     </Button>
+                    <Dialog open={isAdminUploadModalOpen} onOpenChange={setIsAdminUploadModalOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                Replace Document
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-md">
+                            <DialogHeader>
+                                <DialogTitle>Replace Document for Student</DialogTitle>
+                                <DialogDescription>
+                                    Upload a replacement document on behalf of the student.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <form onSubmit={handleAdminUpload} className="space-y-4">
+                                <div>
+                                    <Label htmlFor="document_file_replace">Document File</Label>
+                                    <Input
+                                        id="document_file_replace"
+                                        type="file"
+                                        onChange={(e) => adminUploadForm.setData('document_file', e.target.files?.[0] || null)}
+                                        className="mt-1"
+                                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                    />
+                                    {adminUploadForm.errors.document_file && (
+                                        <p className="mt-1 text-xs text-red-500">{adminUploadForm.errors.document_file}</p>
+                                    )}
+                                </div>
+                                <div>
+                                    <Label htmlFor="admin_notes_replace">Admin Notes</Label>
+                                    <Textarea
+                                        id="admin_notes_replace"
+                                        value={adminUploadForm.data.admin_notes}
+                                        onChange={(e) => adminUploadForm.setData('admin_notes', e.target.value)}
+                                        placeholder="Note about this replacement (e.g., 'Replaced with clearer copy')"
+                                        className="mt-1"
+                                    />
+                                </div>
+                                <DialogFooter>
+                                    <DialogClose asChild>
+                                        <Button type="button" variant="outline">Cancel</Button>
+                                    </DialogClose>
+                                    <Button type="submit" disabled={adminUploadForm.processing || !adminUploadForm.data.document_file}>
+                                        {adminUploadForm.processing ? 'Uploading...' : 'Replace Document'}
+                                    </Button>
+                                </DialogFooter>
+                            </form>
+                        </DialogContent>
+                    </Dialog>
                 </div>
 
                 <Badge variant={currentDocStatusConfig.variant} className="my-2 text-xs whitespace-nowrap capitalize">

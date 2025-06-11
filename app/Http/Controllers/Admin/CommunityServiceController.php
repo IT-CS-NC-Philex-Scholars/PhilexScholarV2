@@ -499,6 +499,105 @@ final class CommunityServiceController extends Controller
     }
 
     /**
+     * Create a community service report on behalf of a student (admin creation).
+     */
+    public function createReportForStudent(Request $request, ScholarshipApplication $application): RedirectResponse
+    {
+        $validated = $request->validate([
+            'description' => ['required', 'string', 'max:1000'],
+            'total_hours' => ['required', 'numeric', 'min:0', 'max:1000'],
+            'days_completed' => ['required', 'integer', 'min:0', 'max:365'],
+            'pdf_file' => ['nullable', 'file', 'max:10240', 'mimes:pdf'],
+            'admin_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $reportType = 'tracked'; // Default to tracked
+        $pdfPath = null;
+
+        // Handle PDF upload if provided
+        if ($request->hasFile('pdf_file')) {
+            $file = $validated['pdf_file'];
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $pdfPath = "community_service_reports/scholarship_{$application->id}/{$filename}";
+            
+            Storage::disk('local')->putFileAs(
+                "community_service_reports/scholarship_{$application->id}",
+                $file,
+                $filename
+            );
+            
+            $reportType = 'pdf_upload';
+        }
+
+        // Create the community service report
+        $report = CommunityServiceReport::create([
+            'scholarship_application_id' => $application->id,
+            'description' => $validated['description'],
+            'total_hours' => (float) $validated['total_hours'],
+            'days_completed' => (int) $validated['days_completed'],
+            'status' => 'approved', // Admin created reports are auto-approved
+            'report_type' => $reportType,
+            'pdf_report_path' => $pdfPath,
+            'submitted_at' => now(),
+            'reviewed_at' => now(),
+        ]);
+
+        // Add admin notes to application if provided
+        if (!empty($validated['admin_notes'])) {
+            $currentAdminNotes = $application->admin_notes ?? '';
+            $newNote = "Admin created community service report #{$report->id}: {$validated['admin_notes']}";
+            $application->update([
+                'admin_notes' => $currentAdminNotes ? $currentAdminNotes . "\n\n" . $newNote : $newNote
+            ]);
+        }
+
+        // Check if community service requirements are now met
+        $this->checkAndUpdateApplicationStatus($application);
+
+        return Redirect::back()->with('success', 'Community service report created successfully.');
+    }
+
+    /**
+     * Create a community service entry on behalf of a student (admin creation).
+     */
+    public function createEntryForStudent(Request $request, ScholarshipApplication $application): RedirectResponse
+    {
+        $validated = $request->validate([
+            'service_date' => ['required', 'date', 'before_or_equal:today'],
+            'time_in' => ['required', 'string', 'date_format:H:i'],
+            'time_out' => ['required', 'string', 'date_format:H:i', 'after:time_in'],
+            'task_description' => ['required', 'string', 'max:1000'],
+            'lessons_learned' => ['nullable', 'string', 'max:1000'],
+            'hours_completed' => ['required', 'numeric', 'min:0.1', 'max:24'],
+            'admin_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Create the community service entry
+        $entry = \App\Models\CommunityServiceEntry::create([
+            'scholarship_application_id' => $application->id,
+            'service_date' => $validated['service_date'],
+            'time_in' => $validated['time_in'],
+            'time_out' => $validated['time_out'],
+            'task_description' => $validated['task_description'],
+            'lessons_learned' => $validated['lessons_learned'],
+            'hours_completed' => (float) $validated['hours_completed'],
+            'status' => 'approved', // Admin created entries are auto-approved
+            'admin_notes' => $validated['admin_notes'],
+        ]);
+
+        // Add admin notes to application if provided
+        if (!empty($validated['admin_notes'])) {
+            $currentAdminNotes = $application->admin_notes ?? '';
+            $newNote = "Admin created community service entry #{$entry->id}: {$validated['admin_notes']}";
+            $application->update([
+                'admin_notes' => $currentAdminNotes ? $currentAdminNotes . "\n\n" . $newNote : $newNote
+            ]);
+        }
+
+        return Redirect::back()->with('success', 'Community service entry created successfully.');
+    }
+
+    /**
      * Get the total approved hours for a community service report (from DB).
      *
      * @return \Illuminate\Http\JsonResponse

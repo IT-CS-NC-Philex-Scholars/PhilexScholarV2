@@ -155,6 +155,106 @@ final class ApplicationController extends Controller
     }
 
     /**
+     * Upload a document on behalf of a student (admin upload).
+     */
+    public function uploadForStudent(Request $request, ScholarshipApplication $application, $requirementId): RedirectResponse
+    {
+        $validated = $request->validate([
+            'document_file' => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx'],
+            'admin_notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Find the document requirement
+        $documentRequirement = $application->scholarshipProgram->documentRequirements()->findOrFail($requirementId);
+
+        // Store the file
+        $file = $validated['document_file'];
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $filePath = "private_uploads/scholarship_{$application->id}/{$filename}";
+        
+        Storage::disk('local')->putFileAs(
+            "private_uploads/scholarship_{$application->id}",
+            $file,
+            $filename
+        );
+
+        // Check if there's already an upload for this requirement and replace it
+        $existingUpload = $application->documentUploads()
+            ->where('document_requirement_id', $documentRequirement->id)
+            ->first();
+
+        if ($existingUpload) {
+            // Delete old file if it exists
+            if (Storage::disk('local')->exists($existingUpload->file_path)) {
+                Storage::disk('local')->delete($existingUpload->file_path);
+            }
+            
+            // Update existing upload
+            $existingUpload->update([
+                'file_path' => $filePath,
+                'original_filename' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'status' => 'approved', // Admin uploaded documents are auto-approved
+                'uploaded_at' => now(),
+                'reviewed_at' => now(),
+                'rejection_reason' => null,
+            ]);
+            
+            $documentUpload = $existingUpload;
+        } else {
+            // Create new document upload
+            $documentUpload = DocumentUpload::create([
+                'scholarship_application_id' => $application->id,
+                'document_requirement_id' => $documentRequirement->id,
+                'file_path' => $filePath,
+                'original_filename' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'status' => 'approved', // Admin uploaded documents are auto-approved
+                'uploaded_at' => now(),
+                'reviewed_at' => now(),
+            ]);
+        }
+
+        // Create an admin note if provided
+        if (!empty($validated['admin_notes'])) {
+            // You could add this to the document upload or application admin notes
+            $currentAdminNotes = $application->admin_notes ?? '';
+            $newNote = "Admin uploaded {$documentRequirement->name}: {$validated['admin_notes']}";
+            $application->update([
+                'admin_notes' => $currentAdminNotes ? $currentAdminNotes . "\n\n" . $newNote : $newNote
+            ]);
+        }
+
+        // Check if all required documents are now uploaded and approved
+        $allRequiredDocumentsApproved = true;
+        $requiredDocIds = $application->scholarshipProgram->documentRequirements()->where('is_required', true)->pluck('id');
+
+        if ($requiredDocIds->isNotEmpty()) {
+            $uploadedRequiredDocs = $application->documentUploads()->whereIn('document_requirement_id', $requiredDocIds)->get();
+
+            if ($uploadedRequiredDocs->count() < $requiredDocIds->count()) {
+                $allRequiredDocumentsApproved = false;
+            } else {
+                foreach ($uploadedRequiredDocs as $upload) {
+                    if ($upload->status !== 'approved') {
+                        $allRequiredDocumentsApproved = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if ($allRequiredDocumentsApproved && $application->status === 'documents_pending') {
+            $application->update(['status' => 'documents_approved']);
+            $this->sendApplicationStatusNotification($application, 'documents_approved');
+        }
+
+        return Redirect::back()->with('success', 'Document uploaded successfully on behalf of student.');
+    }
+
+    /**
      * Serve a private document for viewing/downloading.
      */
     public function viewDocument(DocumentUpload $documentUpload)
@@ -169,7 +269,7 @@ final class ApplicationController extends Controller
 
         $filePathOnDisk = Storage::disk('local')->path($documentUpload->file_path);
         $filename = $documentUpload->original_filename ?? basename($documentUpload->file_path);
-        $mimeType = Storage::disk('local')->mimeType($documentUpload->file_path);
+        $mimeType = $documentUpload->mime_type ?? 'application/octet-stream';
 
         // For inline viewing (like in an iframe or new tab for PDFs/images)
         return response()->file($filePathOnDisk, [

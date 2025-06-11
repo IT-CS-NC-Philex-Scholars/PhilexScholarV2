@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { 
   ArrowLeft,
@@ -20,7 +22,8 @@ import {
   CheckCircle,
   XCircle,
   FileText,
-  AlertTriangle
+  AlertTriangle,
+  Plus
 } from 'lucide-react';
 
 interface CommunityServiceEntryShowProps {
@@ -32,6 +35,18 @@ export default function EntryShow({ entry, application }: CommunityServiceEntryS
   const [reviewStatus, setReviewStatus] = useState(entry.status);
   const [adminNotes, setAdminNotes] = useState(entry.admin_notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreateEntryModalOpen, setIsCreateEntryModalOpen] = useState(false);
+
+  // Admin entry creation form
+  const [adminEntryForm, setAdminEntryForm] = useState({
+    service_date: '',
+    time_in: '',
+    time_out: '',
+    task_description: '',
+    lessons_learned: '',
+    hours_completed: '',
+    admin_notes: '',
+  });
 
   const handleStatusUpdate = () => {
     setIsSubmitting(true);
@@ -42,6 +57,27 @@ export default function EntryShow({ entry, application }: CommunityServiceEntryS
     };
 
     router.patch(route('admin.community-service.entries.status', entry.id), data, {
+      onFinish: () => setIsSubmitting(false),
+    });
+  };
+
+  const handleCreateEntry = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    router.post(route('admin.community-service.create-entry', application.id), adminEntryForm, {
+      onSuccess: () => {
+        setIsCreateEntryModalOpen(false);
+        setAdminEntryForm({
+          service_date: '',
+          time_in: '',
+          time_out: '',
+          task_description: '',
+          lessons_learned: '',
+          hours_completed: '',
+          admin_notes: '',
+        });
+      },
       onFinish: () => setIsSubmitting(false),
     });
   };
@@ -76,21 +112,127 @@ export default function EntryShow({ entry, application }: CommunityServiceEntryS
       
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={() => window.history.back()}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Entries
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Time Tracking Entry</h1>
-            <p className="text-muted-foreground">
-              Review detailed time tracking session
-            </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.history.back()}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Entries
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Time Tracking Entry</h1>
+              <p className="text-muted-foreground">
+                Review detailed time tracking session
+              </p>
+            </div>
           </div>
+          <Dialog open={isCreateEntryModalOpen} onOpenChange={setIsCreateEntryModalOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Entry
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create Community Service Entry</DialogTitle>
+                <DialogDescription>
+                  Create a new community service entry on behalf of the student.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateEntry} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="service_date">Service Date</Label>
+                    <Input
+                      id="service_date"
+                      type="date"
+                      value={adminEntryForm.service_date}
+                      onChange={(e) => setAdminEntryForm(prev => ({ ...prev, service_date: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="hours_completed">Hours Completed</Label>
+                    <Input
+                      id="hours_completed"
+                      type="number"
+                      step="0.1"
+                      min="0.1"
+                      max="24"
+                      value={adminEntryForm.hours_completed}
+                      onChange={(e) => setAdminEntryForm(prev => ({ ...prev, hours_completed: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="time_in">Time In</Label>
+                    <Input
+                      id="time_in"
+                      type="time"
+                      value={adminEntryForm.time_in}
+                      onChange={(e) => setAdminEntryForm(prev => ({ ...prev, time_in: e.target.value }))}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="time_out">Time Out</Label>
+                    <Input
+                      id="time_out"
+                      type="time"
+                      value={adminEntryForm.time_out}
+                      onChange={(e) => setAdminEntryForm(prev => ({ ...prev, time_out: e.target.value }))}
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="task_description">Task Description</Label>
+                  <Textarea
+                    id="task_description"
+                    value={adminEntryForm.task_description}
+                    onChange={(e) => setAdminEntryForm(prev => ({ ...prev, task_description: e.target.value }))}
+                    placeholder="Describe the community service tasks performed..."
+                    required
+                    rows={4}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lessons_learned">Lessons Learned (Optional)</Label>
+                  <Textarea
+                    id="lessons_learned"
+                    value={adminEntryForm.lessons_learned}
+                    onChange={(e) => setAdminEntryForm(prev => ({ ...prev, lessons_learned: e.target.value }))}
+                    placeholder="What did the student learn from this experience?"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="admin_notes_create">Admin Notes</Label>
+                  <Textarea
+                    id="admin_notes_create"
+                    value={adminEntryForm.admin_notes}
+                    onChange={(e) => setAdminEntryForm(prev => ({ ...prev, admin_notes: e.target.value }))}
+                    placeholder="Notes about this entry creation..."
+                    rows={2}
+                  />
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="outline">Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? 'Creating...' : 'Create Entry'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
