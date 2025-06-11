@@ -59,8 +59,12 @@ final class User extends Authenticatable
         'role',
         'avatar',
         'cover_image',
+        'facebook_id',
         'facebook_avatar',
         'facebook_profile_url',
+        'provider',
+        'provider_id',
+        'provider_data',
     ];
 
     /**
@@ -92,6 +96,7 @@ final class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'role' => 'string',
+            'provider_data' => 'array',
         ];
     }
 
@@ -132,6 +137,62 @@ final class User extends Authenticatable
      */
     public function hasFacebookProfile(): bool
     {
-        return !empty($this->facebook_profile_url);
+        return !empty($this->facebook_id) || !empty($this->facebook_profile_url);
+    }
+
+    /**
+     * Get Facebook profile URL from Facebook ID
+     */
+    public function getFacebookProfileUrl(): ?string
+    {
+        if ($this->facebook_profile_url) {
+            return $this->facebook_profile_url;
+        }
+        
+        if ($this->facebook_id) {
+            return "https://facebook.com/{$this->facebook_id}";
+        }
+        
+        return null;
+    }
+
+    /**
+     * Check if user logged in via OAuth provider
+     */
+    public function isOAuthUser(): bool
+    {
+        return !empty($this->provider);
+    }
+
+    /**
+     * Check if user logged in via Facebook
+     */
+    public function isFacebookUser(): bool
+    {
+        return $this->provider === 'facebook';
+    }
+
+    /**
+     * Get the best available avatar (prioritize uploaded, then Facebook)
+     */
+    public function getBestAvatarUrl(): ?string
+    {
+        if ($this->avatar) {
+            return $this->getAvatarUrl();
+        }
+        
+        if ($this->facebook_avatar) {
+            return $this->facebook_avatar;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Check if user can use Facebook avatar as profile picture
+     */
+    public function canUseFacebookAvatar(): bool
+    {
+        return !empty($this->facebook_avatar) && empty($this->avatar);
     }
 }

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,6 +27,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('dashboard');
 
     })->name('dashboard');
+
+    // Profile routes
+    Route::prefix('profile')->name('profile.')->group(function () {
+        Route::post('/apply-facebook-avatar', [ProfileController::class, 'applyFacebookAvatar'])->name('apply-facebook-avatar');
+        Route::post('/update-avatar', [ProfileController::class, 'updateAvatar'])->name('update-avatar');
+        Route::post('/update-cover-image', [ProfileController::class, 'updateCoverImage'])->name('update-cover-image');
+    });
 
     // Notification routes
     Route::prefix('notifications')->name('notifications.')->group(function () {
