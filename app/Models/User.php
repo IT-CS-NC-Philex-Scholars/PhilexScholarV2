@@ -57,6 +57,10 @@ final class User extends Authenticatable
         'email',
         'password',
         'role',
+        'avatar',
+        'cover_image',
+        'facebook_avatar',
+        'facebook_profile_url',
     ];
 
     /**
@@ -89,5 +93,45 @@ final class User extends Authenticatable
             'password' => 'hashed',
             'role' => 'string',
         ];
+    }
+
+    /**
+     * Get the user's avatar URL
+     */
+    public function getAvatarUrl(): ?string
+    {
+        if ($this->avatar) {
+            return asset('storage/' . $this->avatar);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the user's cover image URL
+     */
+    public function getCoverImageUrl(): ?string
+    {
+        if ($this->cover_image) {
+            return asset('storage/' . $this->cover_image);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the user's Facebook avatar URL
+     */
+    public function getFacebookAvatarUrl(): ?string
+    {
+        return $this->facebook_avatar;
+    }
+
+    /**
+     * Check if user has a Facebook profile
+     */
+    public function hasFacebookProfile(): bool
+    {
+        return !empty($this->facebook_profile_url);
     }
 }

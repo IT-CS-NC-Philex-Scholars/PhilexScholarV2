@@ -2,7 +2,12 @@ export interface User {
   id: number;
   name: string;
   email: string;
+  email_verified_at: string | null;
   role: 'admin' | 'student';
+  avatar: string | null;
+  cover_image: string | null;
+  facebook_avatar: string | null;
+  facebook_profile_url: string | null;
 }
 
 export interface BreadcrumbItem {
