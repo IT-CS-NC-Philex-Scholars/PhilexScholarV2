@@ -22,6 +22,11 @@ export interface NavItem {
   external?: boolean;
 }
 
+export interface SchoolData {
+  school_name: string;
+  school_type: 'high_school' | 'college';
+}
+
 export interface StudentProfile {
   id: number;
   user_id: number;
