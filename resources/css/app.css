@@ -60,6 +60,23 @@
   .ease-out-expo {
     transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
+
+  /* Mobile safe area utilities */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .h-safe-bottom {
+    height: env(safe-area-inset-bottom);
+  }
+
+  .pb-safe {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+  }
+
+  .mb-safe {
+    margin-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
 }
 
 @theme {

@@ -2,6 +2,7 @@ import { AppContent } from '@/components/app-content';
 import { AppShell } from '@/components/app-shell';
 import { AppSidebar } from '@/components/app-sidebar';
 import { AppSidebarHeader } from '@/components/app-sidebar-header';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
 import { Toaster } from '@/components/ui/sonner';
 import { NotificationProvider } from '@/hooks/use-notifications';
 import { type BreadcrumbItem } from '@/types';
@@ -30,10 +31,11 @@ export default function AppSidebarLayout({ children, breadcrumbs = [] }: PropsWi
         <NotificationProvider>
             <AppShell variant="sidebar">
                 <AppSidebar variant="inset" />
-                <AppContent variant="sidebar">
+                <AppContent variant="sidebar" className="mb-safe md:mb-0">
                     <AppSidebarHeader breadcrumbs={breadcrumbs} />
                     {children}
                 </AppContent>
+                <MobileBottomNav />
             </AppShell>
             <Toaster position="top-right" richColors closeButton />
         </NotificationProvider>
