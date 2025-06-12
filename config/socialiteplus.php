@@ -40,7 +40,7 @@ return [
     'providers' => [
 
         'google' => [
-            'active' => false,
+            'active' => true,
             'branded' => false,
             'name' => 'Google',
             'icon' => 'GoogleIcon',
@@ -50,7 +50,7 @@ return [
         ],
 
         'facebook' => [
-            'active' => true,
+            'active' => false,
             'branded' => false,
             'name' => 'Facebook',
             'icon' => 'FacebookIcon',

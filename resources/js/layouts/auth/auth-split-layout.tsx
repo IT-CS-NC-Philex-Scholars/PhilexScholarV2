@@ -30,9 +30,7 @@ export default function AuthSplitLayout({ children, title, description }: PropsW
                         {children}
                     </div>
                 </div>
-                <div className="bg-muted hidden lg:block rounded-lg" >
-                    <img src="/images/cover.jpg" className="w-full h-full object-cover rounded-lg filter brightness-90" alt="" />
-                </div>
+                <div className="bg-muted hidden lg:block rounded-lg" />
             </div>
         </div>
     );

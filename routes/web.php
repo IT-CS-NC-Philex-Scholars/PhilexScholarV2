@@ -30,7 +30,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile routes
     Route::prefix('profile')->name('profile.')->group(function () {
-        Route::post('/apply-facebook-avatar', [ProfileController::class, 'applyFacebookAvatar'])->name('apply-facebook-avatar');
+        Route::post('/apply-oauth-avatar', [ProfileController::class, 'applyOAuthAvatar'])->name('apply-oauth-avatar');
+        Route::post('/apply-facebook-avatar', [ProfileController::class, 'applyOAuthAvatar'])->name('apply-facebook-avatar'); // Backward compatibility
         Route::post('/update-avatar', [ProfileController::class, 'updateAvatar'])->name('update-avatar');
         Route::post('/update-cover-image', [ProfileController::class, 'updateCoverImage'])->name('update-cover-image');
     });

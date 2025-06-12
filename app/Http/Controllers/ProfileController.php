@@ -11,39 +11,38 @@ use Intervention\Image\Facades\Image;
 class ProfileController extends Controller
 {
     /**
-     * Apply Facebook avatar as profile picture
+     * Apply OAuth avatar as profile picture (works for Facebook, Google, etc.)
      */
-    public function applyFacebookAvatar(Request $request): JsonResponse
+    public function applyOAuthAvatar(Request $request): JsonResponse
     {
         $user = Auth::user();
         
         if (!$user->facebook_avatar) {
+            $providerName = $user->provider ? ucfirst($user->provider) : 'OAuth';
             return response()->json([
                 'success' => false,
-                'message' => 'No Facebook avatar available'
+                'message' => "No {$providerName} avatar available"
             ], 400);
         }
 
         try {
-            // Download the Facebook avatar
+            $providerName = $user->provider ? ucfirst($user->provider) : 'OAuth';
+            
+            // Download the OAuth avatar
             $imageContent = file_get_contents($user->facebook_avatar);
             
             if ($imageContent === false) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to download Facebook avatar'
+                    'message' => "Failed to download {$providerName} avatar"
                 ], 400);
             }
 
             // Generate a unique filename
             $filename = 'avatars/' . $user->id . '_' . time() . '.jpg';
             
-            // Process and save the image
-            $image = Image::make($imageContent)
-                ->resize(300, 300)
-                ->encode('jpg', 85);
-            
-            Storage::disk('public')->put($filename, $image);
+            // Save the image directly (remove Intervention Image dependency for now)
+            Storage::disk('public')->put($filename, $imageContent);
             
             // Delete old avatar if exists
             if ($user->avatar) {
@@ -55,14 +54,15 @@ class ProfileController extends Controller
             
             return response()->json([
                 'success' => true,
-                'message' => 'Facebook avatar applied successfully',
+                'message' => "{$providerName} avatar applied successfully",
                 'avatar_url' => $user->getAvatarUrl()
             ]);
             
         } catch (\Exception $e) {
+            $providerName = $user->provider ? ucfirst($user->provider) : 'OAuth';
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to apply Facebook avatar: ' . $e->getMessage()
+                'message' => "Failed to apply {$providerName} avatar: " . $e->getMessage()
             ], 500);
         }
     }

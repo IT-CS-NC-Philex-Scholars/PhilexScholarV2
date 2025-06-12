@@ -173,7 +173,15 @@ final class User extends Authenticatable
     }
 
     /**
-     * Get the best available avatar (prioritize uploaded, then Facebook)
+     * Check if user logged in via Google
+     */
+    public function isGoogleUser(): bool
+    {
+        return $this->provider === 'google';
+    }
+
+    /**
+     * Get the best available avatar (prioritize uploaded, then OAuth avatar)
      */
     public function getBestAvatarUrl(): ?string
     {
@@ -189,10 +197,46 @@ final class User extends Authenticatable
     }
 
     /**
-     * Check if user can use Facebook avatar as profile picture
+     * Check if user can use OAuth avatar as profile picture
      */
-    public function canUseFacebookAvatar(): bool
+    public function canUseOAuthAvatar(): bool
     {
         return !empty($this->facebook_avatar) && empty($this->avatar);
+    }
+
+    /**
+     * Get OAuth provider display name
+     */
+    public function getProviderDisplayName(): ?string
+    {
+        if (!$this->provider) {
+            return null;
+        }
+
+        return match($this->provider) {
+            'google' => 'Google',
+            'facebook' => 'Facebook',
+            'github' => 'GitHub',
+            'twitter' => 'Twitter',
+            default => ucfirst($this->provider)
+        };
+    }
+
+    /**
+     * Get OAuth profile URL (works for both Google and Facebook)
+     */
+    public function getOAuthProfileUrl(): ?string
+    {
+        if ($this->provider === 'facebook') {
+            return $this->getFacebookProfileUrl();
+        }
+        
+        if ($this->provider === 'google' && $this->provider_id) {
+            // Google doesn't have public profile URLs like Facebook
+            // But we can store the avatar URL in facebook_avatar field
+            return null;
+        }
+        
+        return null;
     }
 }

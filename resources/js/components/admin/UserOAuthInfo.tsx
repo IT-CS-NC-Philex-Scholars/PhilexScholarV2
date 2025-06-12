@@ -18,19 +18,19 @@ interface User {
     provider_data?: any;
 }
 
-interface UserFacebookInfoProps {
+interface UserOAuthInfoProps {
     user: User;
     showAvatar?: boolean;
     showBadges?: boolean;
     compact?: boolean;
 }
 
-export default function UserFacebookInfo({ 
+export default function UserOAuthInfo({ 
     user, 
     showAvatar = true, 
     showBadges = true, 
     compact = false 
-}: UserFacebookInfoProps) {
+}: UserOAuthInfoProps) {
     const getOAuthProfileUrl = () => {
         if (user.provider === 'facebook') {
             if (user.facebook_profile_url) {
@@ -91,8 +91,8 @@ export default function UserFacebookInfo({
             <div className="flex items-center gap-2">
                 {showAvatar && user.facebook_avatar && (
                     <Avatar className="w-6 h-6">
-                        <AvatarImage src={user.facebook_avatar} alt="Facebook profile" />
-                        <AvatarFallback className="text-xs">FB</AvatarFallback>
+                        <AvatarImage src={user.facebook_avatar} alt={`${getProviderName()} profile`} />
+                        <AvatarFallback className="text-xs">{getProviderName().substring(0, 2)}</AvatarFallback>
                     </Avatar>
                 )}
                 
@@ -114,7 +114,7 @@ export default function UserFacebookInfo({
                                         asChild
                                     >
                                         <a 
-                                            href={facebookUrl} 
+                                            href={oauthUrl} 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                         >
@@ -123,7 +123,7 @@ export default function UserFacebookInfo({
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>Open Facebook Profile</p>
+                                    <p>Open {getProviderName()} Profile</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
@@ -136,21 +136,19 @@ export default function UserFacebookInfo({
     return (
         <div className="space-y-3">
             <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center">
-                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                    </svg>
+                <div className={`w-8 h-8 rounded-full ${getProviderColor()} flex items-center justify-center`}>
+                    {getProviderIcon()}
                 </div>
                 <div className="flex-1">
-                    <p className="font-medium text-sm">Facebook Profile</p>
+                    <p className="font-medium text-sm">{getProviderName()} Profile</p>
                     <p className="text-xs text-muted-foreground">
-                        {isFacebookUser ? 'OAuth Login User' : 'Connected Profile'}
+                        {isOAuthUser ? 'OAuth Login User' : 'Connected Profile'}
                     </p>
                 </div>
                 {showBadges && (
                     <div className="flex items-center gap-2">
-                        {isFacebookUser && (
-                            <Badge variant="secondary" className="bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                        {isOAuthUser && (
+                            <Badge variant="secondary" className={user.provider === 'google' ? 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300'}>
                                 <CheckCircleIcon className="w-3 h-3 mr-1" />
                                 OAuth
                             </Badge>
@@ -169,7 +167,7 @@ export default function UserFacebookInfo({
                 {showAvatar && user.facebook_avatar && (
                     <div className="flex items-center gap-3 p-2 rounded bg-muted/50">
                         <Avatar className="w-10 h-10">
-                            <AvatarImage src={user.facebook_avatar} alt="Facebook profile picture" />
+                            <AvatarImage src={user.facebook_avatar} alt={`${getProviderName()} profile picture`} />
                             <AvatarFallback>
                                 <UserIcon className="w-5 h-5" />
                             </AvatarFallback>
@@ -183,20 +181,22 @@ export default function UserFacebookInfo({
                     </div>
                 )}
 
-                {user.facebook_id && (
+                {(user.facebook_id || user.provider_id) && (
                     <div className="flex items-center justify-between p-2 rounded bg-muted/50">
                         <div>
-                            <p className="text-sm font-medium">Facebook ID</p>
-                            <p className="text-xs text-muted-foreground font-mono">{user.facebook_id}</p>
+                            <p className="text-sm font-medium">{getProviderName()} ID</p>
+                            <p className="text-xs text-muted-foreground font-mono">
+                                {user.provider === 'facebook' ? user.facebook_id : user.provider_id}
+                            </p>
                         </div>
                     </div>
                 )}
 
-                {facebookUrl && (
+                {oauthUrl && (
                     <div className="flex items-center justify-between p-2 rounded bg-muted/50">
                         <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium">Profile URL</p>
-                            <p className="text-xs text-muted-foreground truncate">{facebookUrl}</p>
+                            <p className="text-xs text-muted-foreground truncate">{oauthUrl}</p>
                         </div>
                         <Button
                             variant="outline"
@@ -205,7 +205,7 @@ export default function UserFacebookInfo({
                             className="ml-2"
                         >
                             <a 
-                                href={facebookUrl} 
+                                href={oauthUrl} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-2"
@@ -223,7 +223,7 @@ export default function UserFacebookInfo({
                             <p className="text-sm font-medium">Login Provider</p>
                             <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="secondary" className="capitalize text-xs">
-                                    {user.provider}
+                                    {getProviderName()}
                                 </Badge>
                                 {user.provider_id && (
                                     <span className="text-xs text-muted-foreground font-mono">
