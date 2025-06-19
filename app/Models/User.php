@@ -39,7 +39,7 @@ use NotificationChannels\WebPush\HasPushSubscriptions;
  *
  * @mixin \Eloquent
  */
-final class User extends Authenticatable 
+final class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
@@ -108,7 +108,7 @@ final class User extends Authenticatable
         if ($this->avatar) {
             return asset('storage/' . $this->avatar);
         }
-        
+
         return null;
     }
 
@@ -120,7 +120,7 @@ final class User extends Authenticatable
         if ($this->cover_image) {
             return asset('storage/' . $this->cover_image);
         }
-        
+
         return null;
     }
 
@@ -148,11 +148,11 @@ final class User extends Authenticatable
         if ($this->facebook_profile_url) {
             return $this->facebook_profile_url;
         }
-        
+
         if ($this->facebook_id) {
             return "https://facebook.com/{$this->facebook_id}";
         }
-        
+
         return null;
     }
 
@@ -188,11 +188,11 @@ final class User extends Authenticatable
         if ($this->avatar) {
             return $this->getAvatarUrl();
         }
-        
+
         if ($this->facebook_avatar) {
             return $this->facebook_avatar;
         }
-        
+
         return null;
     }
 
@@ -230,13 +230,13 @@ final class User extends Authenticatable
         if ($this->provider === 'facebook') {
             return $this->getFacebookProfileUrl();
         }
-        
+
         if ($this->provider === 'google' && $this->provider_id) {
             // Google doesn't have public profile URLs like Facebook
             // But we can store the avatar URL in facebook_avatar field
             return null;
         }
-        
+
         return null;
     }
 }

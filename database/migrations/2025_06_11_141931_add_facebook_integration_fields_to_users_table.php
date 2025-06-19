@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('facebook_id')->nullable()->after('facebook_profile_url');
+
             $table->string('provider')->nullable()->after('facebook_id'); // oauth provider (facebook, google, etc.)
             $table->string('provider_id')->nullable()->after('provider'); // provider specific ID
             $table->json('provider_data')->nullable()->after('provider_id'); // additional provider data
