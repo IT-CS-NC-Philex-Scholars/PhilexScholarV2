@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\CommunityServiceController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ScholarshipController;
 use App\Http\Controllers\Admin\StudentController;
+use App\Http\Controllers\Admin\UserController;
 use Illuminate\Support\Facades\Route;
 
 // Admin routes
@@ -26,6 +27,9 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
     Route::patch('/service-reports/{report}/review', [ApplicationController::class, 'reviewServiceReport'])->name('service-reports.review');
     Route::post('/applications/{application}/disbursements', [ApplicationController::class, 'createDisbursement'])->name('disbursements.store');
     Route::patch('/disbursements/{disbursement}', [ApplicationController::class, 'updateDisbursement'])->name('disbursements.update');
+
+    // User management
+    Route::resource('users', UserController::class);
 
     // Student management
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');

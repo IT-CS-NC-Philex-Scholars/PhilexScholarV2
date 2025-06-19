@@ -73,6 +73,11 @@ const adminNavItems: NavItem[] = [
         href: route('admin.students.index'),
         icon: Users,
     },
+    {
+        title: 'Users',
+        href: route('admin.users.index'),
+        icon: Shield,
+    }
 ];
 
 // Support and settings items
