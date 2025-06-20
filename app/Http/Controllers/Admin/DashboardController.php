@@ -38,7 +38,7 @@ final class DashboardController extends Controller
             ->where('application_deadline', '>=', Carbon::now())
             ->where('application_deadline', '<=', Carbon::now()->addDays(7))
             ->count();
-        
+
         // Get application statistics based on filter
         $applicationStats = (clone $applicationsQuery)->select('status', DB::raw('count(*) as count'))
             ->groupBy('status')
@@ -66,7 +66,7 @@ final class DashboardController extends Controller
             });
 
         $recentApplications = $recentApplicationsQuery->latest()->take(5)->get();
-        
+
         // Application Trends data for the last 7 weeks
         $driver = DB::connection()->getDriverName();
 
@@ -74,8 +74,10 @@ final class DashboardController extends Controller
 
         if ($driver === 'sqlite') {
             $applicationTrendsQuery->select(DB::raw("strftime('%Y', created_at) as year, strftime('%W', created_at) as week, count(*) as count"));
+        } elseif ($driver === 'pgsql') {
+            $applicationTrendsQuery->select(DB::raw('EXTRACT(YEAR FROM created_at) as year, EXTRACT(WEEK FROM created_at) as week, count(*) as count'));
         } else {
-            // Assuming MySQL, PostgreSQL, etc.
+            // Assuming MySQL
             $applicationTrendsQuery->select(DB::raw('YEAR(created_at) as year, WEEK(created_at, 1) as week, count(*) as count'));
         }
 
@@ -105,7 +107,7 @@ final class DashboardController extends Controller
                 $demographicsQuery->where('school_level', $program->school_type_eligibility);
             }
         }
-        
+
         $studentDemographicsBySchoolName = $demographicsQuery
             ->select('school_name', DB::raw('count(*) as count'))
             ->groupBy('school_name')
@@ -125,7 +127,7 @@ final class DashboardController extends Controller
             ->when($selectedScholarshipId, function ($query) use ($selectedScholarshipId) {
                 $query->whereHas('scholarshipApplication', fn ($q) => $q->where('scholarship_program_id', $selectedScholarshipId));
             });
-        
+
         $totalDisbursedAmount = (clone $disbursementsQuery)->where('status', 'completed')->sum('amount');
         $totalPendingDisbursementAmount = (clone $disbursementsQuery)->where('status', 'pending')->sum('amount');
 
@@ -141,7 +143,7 @@ final class DashboardController extends Controller
             ->orderByDesc('scholarship_applications_count')
             ->take(3)
             ->get(['id', 'name', 'scholarship_applications_count']);
-        
+
         // Scholarship programs for the filter dropdown
         $scholarshipPrograms = ScholarshipProgram::query()->where('active', true)->orderBy('name')->get(['id', 'name']);
 
