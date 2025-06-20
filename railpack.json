@@ -1,7 +1,6 @@
 {
     "$schema": "https://schema.railpack.com",
     "provider": "railway",
-    "buildAptPackages": ["sqlite3", "composer", "bun", "nodejs", "php"],
     "steps": {
         "install": {
             "commands": ["composer install --no-dev --optimize-autoloader", "bun install --production"]
