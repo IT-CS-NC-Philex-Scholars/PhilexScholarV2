@@ -36,11 +36,11 @@ return [
     |
     | redirect: the redirect url of the provider
     */
-    'disable_credentials_login' => true,
+    'disable_credentials_login' => false,
     'providers' => [
 
         'google' => [
-            'active' => true,
+            'active' => false,
             'branded' => false,
             'name' => 'Google',
             'icon' => 'GoogleIcon',
