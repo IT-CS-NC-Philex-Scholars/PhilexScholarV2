@@ -1,0 +1,27 @@
+{
+    "$schema": "https://schema.railpack.com",
+    "provider": "railway",
+    "buildAptPackages": ["sqlite3"],
+    "steps": {
+        "install": {
+            "commands": ["composer install --no-dev --optimize-autoloader", "bun install --production"]
+        },
+        "build": {
+            "inputs": [{ "step": "install" }],
+            "commands": ["php artisan config:cache", "php artisan route:cache", "php artisan view:cache", "bun run build", "php artisan storage:link"]
+        }
+    },
+    "deploy": {
+        "base": { "step": "build" },
+        "startCommand": "php artisan serve --host=0.0.0.0 --port=$PORT",
+        "aptPackages": ["sqlite3", "nginx"],
+        "variables": {
+            "APP_ENV": "production",
+            "APP_DEBUG": "false",
+            "LOG_CHANNEL": "stderr",
+            "SESSION_DRIVER": "database",
+            "CACHE_DRIVER": "database",
+            "QUEUE_CONNECTION": "database"
+        }
+    }
+}

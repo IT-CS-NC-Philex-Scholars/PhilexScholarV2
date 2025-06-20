@@ -1,0 +1,181 @@
+{
+    "$schema": "https://schema.railpack.com",
+    "provider": "railway",
+    "buildAptPackages": ["sqlite3", "curl", "unzip"],
+    "caches": {
+        "composer": {
+            "directory": "/root/.composer/cache",
+            "type": "shared"
+        },
+        "node": {
+            "directory": "node_modules",
+            "type": "shared"
+        },
+        "bun": {
+            "directory": "/root/.bun/install/cache",
+            "type": "shared"
+        }
+    },
+    "steps": {
+        "install": {
+            "inputs": ["."],
+            "caches": ["composer", "node", "bun"],
+            "commands": [
+                {
+                    "cmd": "composer install --no-dev --optimize-autoloader --no-interaction",
+                    "customName": "Install PHP dependencies"
+                },
+                {
+                    "cmd": "bun install --frozen-lockfile --production",
+                    "customName": "Install Node.js dependencies"
+                }
+            ]
+        },
+        "build": {
+            "inputs": [{ "step": "install" }],
+            "commands": [
+                {
+                    "cmd": "cp .env.example .env",
+                    "customName": "Create environment file"
+                },
+                {
+                    "cmd": "php artisan key:generate --no-interaction",
+                    "customName": "Generate application key"
+                },
+                {
+                    "cmd": "php artisan config:cache",
+                    "customName": "Cache Laravel configuration"
+                },
+                {
+                    "cmd": "php artisan route:cache",
+                    "customName": "Cache Laravel routes"
+                },
+                {
+                    "cmd": "php artisan view:cache",
+                    "customName": "Cache Laravel views"
+                },
+                {
+                    "cmd": "bun run build",
+                    "customName": "Build frontend assets"
+                },
+                {
+                    "cmd": "php artisan storage:link",
+                    "customName": "Link storage directory"
+                }
+            ],
+            "deployOutputs": [
+                {
+                    "include": ["*"],
+                    "exclude": [
+                        "node_modules",
+                        "tests",
+                        ".git",
+                        ".github",
+                        "*.md",
+                        ".env.example",
+                        "docker-compose.yml",
+                        "Dockerfile",
+                        "phpunit.xml",
+                        "phpstan.neon",
+                        "rector.php"
+                    ]
+                }
+            ]
+        },
+        "build-ssr": {
+            "inputs": [{ "step": "install" }],
+            "commands": [
+                {
+                    "cmd": "cp .env.example .env",
+                    "customName": "Create environment file"
+                },
+                {
+                    "cmd": "php artisan key:generate --no-interaction",
+                    "customName": "Generate application key"
+                },
+                {
+                    "cmd": "php artisan config:cache",
+                    "customName": "Cache Laravel configuration"
+                },
+                {
+                    "cmd": "php artisan route:cache",
+                    "customName": "Cache Laravel routes"
+                },
+                {
+                    "cmd": "php artisan view:cache",
+                    "customName": "Cache Laravel views"
+                },
+                {
+                    "cmd": "bun run build:ssr",
+                    "customName": "Build frontend assets with SSR"
+                },
+                {
+                    "cmd": "php artisan storage:link",
+                    "customName": "Link storage directory"
+                }
+            ],
+            "deployOutputs": [
+                {
+                    "include": ["*"],
+                    "exclude": [
+                        "node_modules",
+                        "tests",
+                        ".git",
+                        ".github",
+                        "*.md",
+                        ".env.example",
+                        "docker-compose.yml",
+                        "Dockerfile",
+                        "phpunit.xml",
+                        "phpstan.neon",
+                        "rector.php"
+                    ]
+                }
+            ]
+        },
+        "test": {
+            "inputs": [{ "step": "install" }],
+            "commands": [
+                {
+                    "cmd": "cp .env.example .env",
+                    "customName": "Create test environment"
+                },
+                {
+                    "cmd": "php artisan key:generate --no-interaction",
+                    "customName": "Generate test key"
+                },
+                {
+                    "cmd": "./vendor/bin/pest --parallel",
+                    "customName": "Run PHP tests"
+                },
+                {
+                    "cmd": "bun run lint",
+                    "customName": "Run frontend linting"
+                },
+                {
+                    "cmd": "bun run types",
+                    "customName": "Check TypeScript types"
+                }
+            ]
+        }
+    },
+    "deploy": {
+        "base": { "step": "build" },
+        "startCommand": "php artisan serve --host=0.0.0.0 --port=$PORT",
+        "aptPackages": ["sqlite3", "nginx", "supervisor"],
+        "variables": {
+            "APP_ENV": "production",
+            "APP_DEBUG": "false",
+            "LOG_CHANNEL": "stderr",
+            "LOG_LEVEL": "error",
+            "SESSION_DRIVER": "database",
+            "CACHE_DRIVER": "database",
+            "QUEUE_CONNECTION": "database",
+            "BROADCAST_DRIVER": "reverb",
+            "VITE_APP_NAME": "${APP_NAME}",
+            "DB_CONNECTION": "sqlite",
+            "DB_DATABASE": "/app/database/database.sqlite"
+        },
+        "paths": ["/app/vendor/bin"]
+    }
+}
