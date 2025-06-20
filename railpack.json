@@ -12,8 +12,7 @@
     },
     "deploy": {
         "base": { "step": "build" },
-        "startCommand": "php artisan serve --host=0.0.0.0 --port=$PORT",
-        "aptPackages": ["sqlite3", "nginx", "php", "composer", "bun"],
+        "startCommand": "php artisan serve --host=0.0.0.0 --port=80",
         "variables": {
             "APP_ENV": "production",
             "APP_DEBUG": "false",
