@@ -30,7 +30,7 @@ export default function AuthSplitLayout({ children, title, description }: PropsW
                         {children}
                     </div>
                 </div>
-                <div className="bg-muted hidden lg:block rounded-lg" />
+                <div className="bg-muted hidden lg:block rounded-lg bg-cover bg-center" style={{ backgroundImage: `url(/images/cover.jpg)` }} />
             </div>
         </div>
     );

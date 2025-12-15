@@ -633,7 +633,7 @@ export default function Show({
 
                                                     {/* Action Buttons */}
                                                     {(application.status === 'draft' || 
-                                                      (application.status === 'documents_rejected' && upload?.status.startsWith('rejected_'))) && (
+                                                      application.status === 'documents_rejected') && (
                                                         <div className="flex gap-2">
                                                             <Button 
                                                                 onClick={() => {

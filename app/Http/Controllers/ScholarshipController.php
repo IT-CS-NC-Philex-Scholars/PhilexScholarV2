@@ -166,7 +166,7 @@ final class ScholarshipController extends Controller
             'application' => $application,
             'scholarship' => $application->scholarshipProgram,
             'documentUploads' => $documentUploads,
-            'canSubmit' => $application->status === 'draft' &&
+            'canSubmit' => ($application->status === 'draft' || $application->status === 'documents_rejected') &&
                            $application->documentUploads->count() === $application->scholarshipProgram->documentRequirements->count(),
         ]);
     }

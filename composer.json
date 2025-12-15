@@ -1,8 +1,8 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "shipfastlabs/modern-react-starter-kit",
+    "name": "itcsnc-philex-scholars/philex-scholar-v2",
     "type": "project",
-    "description": "Laravel React starter kit with opinionated modern tooling setup.",
+    "description": "Philex Scholar V2 is a Laravel React starter project for the IT-CS-NC-Philex-Scholars.",
     "keywords": [
         "laravel",
         "framework",
@@ -11,7 +11,7 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "ext-intl": "*",
         "ext-sqlite3": "*",
         "blaspsoft/socialiteplus": "^1.0",
