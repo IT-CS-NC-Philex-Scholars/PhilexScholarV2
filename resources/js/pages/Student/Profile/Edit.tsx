@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast, Toaster } from 'sonner';
 import AppLayout from '@/layouts/app-layout';
 import { BreadcrumbItem, StudentProfile, SchoolData } from '@/types';
@@ -14,11 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
-// @ts-ignore - Disable implicit any errors for this file
 import {
     User, Home, School, Phone, MapPin, Mail, BookOpen,
-    GraduationCap, Building, Save, AlertCircle, CheckCircle, HelpCircle, Search, X
+    GraduationCap, Building, Save, AlertCircle, CheckCircle2, 
+    HelpCircle, Search, X, Check, ChevronsUpDown, Sparkles
 } from 'lucide-react';
 
 interface ProfileProps {
@@ -29,9 +31,10 @@ interface ProfileProps {
 export default function Edit({ profile, allSchoolData }: ProfileProps) {
     const [activeTab, setActiveTab] = useState<string>('personal');
     const [formProgress, setFormProgress] = useState<number>(0);
-    const [showSchoolSuggestions, setShowSchoolSuggestions] = useState(false);
-    const [schoolSearchValue, setSchoolSearchValue] = useState(profile?.school_name || '');
-    const [filteredSchools, setFilteredSchools] = useState<SchoolData[]>([]);
+    const [openSchoolCombobox, setOpenSchoolCombobox] = useState(false);
+    
+    // For manual school entry if needed
+    const [isManualSchool, setIsManualSchool] = useState(false);
 
     const { data, setData, patch, errors, processing, reset } = useForm({
         id: profile?.id || 0,
@@ -48,8 +51,7 @@ export default function Edit({ profile, allSchoolData }: ProfileProps) {
 
     // Calculate form completion progress
     useEffect(() => {
-        // Count filled fields (exclude id and user_id)
-        const totalFields = 8; // Total number of form fields
+        const totalFields = 8;
         let filledFields = 0;
 
         if (data.address) filledFields++;
@@ -62,35 +64,11 @@ export default function Edit({ profile, allSchoolData }: ProfileProps) {
         if (data.school_name) filledFields++;
 
         const progress = Math.round((filledFields / totalFields) * 100);
-
         setFormProgress(progress);
     }, [data]);
 
-    // Update schoolSearchValue when profile.school_name changes (e.g. after form submission)
-    useEffect(() => {
-        if (profile?.school_name) {
-            setSchoolSearchValue(profile.school_name);
-        }
-    }, [profile?.school_name]);
-
-    // Filter schools based on search input and school type
-    useEffect(() => {
-        if (schoolSearchValue.length >= 2) {
-            const filtered = allSchoolData
-                .filter(school =>
-                    school.school_type === data.school_type &&
-                    school.school_name.toLowerCase().includes(schoolSearchValue.toLowerCase())
-                )
-                .slice(0, 8); // Limit to 8 suggestions for mobile friendliness
-            setFilteredSchools(filtered);
-        } else {
-            setFilteredSchools([]);
-        }
-    }, [schoolSearchValue, data.school_type, allSchoolData]);
-
     function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
-
         toast.promise(
             new Promise<void>((resolve, reject) => {
                 patch(route('student.profile.update'), {
@@ -99,495 +77,430 @@ export default function Edit({ profile, allSchoolData }: ProfileProps) {
                 });
             }),
             {
-                loading: 'Saving your profile information...',
-                success: 'Your profile has been updated successfully!',
-                error: 'There was a problem saving your information. Please try again.',
+                loading: 'Saving your profile...',
+                success: 'Profile updated successfully!',
+                error: 'Failed to update profile. Please check the form.',
             }
         );
     }
 
-    // Different options based on school type
     const schoolLevelOptions = data.school_type === 'high_school'
         ? ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10', 'Grade 11', 'Grade 12']
         : ['1st Year', '2nd Year', '3rd Year', '4th Year', '5th Year', '6th Year'];
 
     const breadcrumbs: BreadcrumbItem[] = [
         { title: 'Student Dashboard', href: route('student.dashboard') },
-        { title: 'My Profile' }
+        { title: 'Edit Profile' }
     ];
 
-    // Animation variants for staggered animations
-    const containerVariants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                staggerChildren: 0.1,
-                delayChildren: 0.1
-            }
-        }
-    };
-
-    const itemVariants = {
-        hidden: { y: 15, opacity: 0 },
-        visible: {
-            y: 0,
-            opacity: 1,
-            transition: { type: "spring", stiffness: 120, damping: 14 }
-        }
-    };
-
-    // Function to render tooltip with help text
-    const renderTooltip = (text: string) => (
-        <TooltipProvider>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <span className="ml-1 cursor-help inline-flex">
-                        <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                    </span>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-xs">
-                    <p className="text-xs">{text}</p>
-                </TooltipContent>
-            </Tooltip>
-        </TooltipProvider>
-    );
-
-    // Get progress color based on completion percentage
     const getProgressColor = () => {
+        if (formProgress >= 100) return 'bg-emerald-500';
         if (formProgress >= 80) return 'bg-green-500';
         if (formProgress >= 50) return 'bg-blue-500';
-        if (formProgress >= 25) return 'bg-amber-500';
-        return 'bg-neutral-300';
+        return 'bg-amber-500';
     };
+    
+    const getProgressMessage = () => {
+        if (formProgress >= 100) return "Excellent! Your profile is complete.";
+        if (formProgress >= 80) return "Almost there! Just a few more details.";
+        if (formProgress >= 50) return "Good start! Keep going.";
+        return "Let's get your profile set up.";
+    };
+
+    // Filter schools for combobox
+    const filteredSchools = allSchoolData.filter(s => s.school_type === data.school_type);
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
-            <Head title="Student Profile" />
+            <Head title="Edit Student Profile" />
             <Toaster position="top-right" richColors closeButton />
 
-            <motion.div
-                className="max-w-5xl mx-auto px-4 py-6"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-            >
-                {/* Page header with progress */}
-                <motion.div variants={itemVariants} className="mb-8">
-                    <div className="bg-gradient-to-r from-primary/20 to-transparent rounded-xl p-6">
-                        <div className="max-w-3xl">
-                            <div className="flex items-center gap-2 mb-2">
-                                <User className="h-5 w-5 text-primary" />
-                                <h1 className="text-xl font-bold">Your Student Profile</h1>
+            <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
+                
+                {/* Hero Section */}
+                <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/90 to-primary/70 text-primary-foreground shadow-xl"
+                >
+                    <div className="absolute inset-0 bg-[url('/patterns/grid.svg')] opacity-10"></div>
+                    <div className="relative p-8 md:p-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div className="space-y-2 max-w-xl">
+                            <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0 backdrop-blur-sm">
+                                    <Sparkles className="w-3 h-3 mr-1" />
+                                    Student Profile
+                                </Badge>
                             </div>
-                            <p className="text-muted-foreground mb-4">
-                                Complete your profile information to help us match you with the right scholarships. Make sure all the details are accurate and up to date.
+                            <h1 className="text-3xl font-bold tracking-tight">Tell us about yourself</h1>
+                            <p className="text-primary-foreground/80 text-lg">
+                                Complete your profile to unlock personalized scholarship matches and opportunities.
                             </p>
-
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium">Profile Completion</span>
-                                    <Badge variant="outline" className="text-xs font-normal">
-                                        {formProgress}% Complete
-                                    </Badge>
-                                </div>
-                                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                    <motion.div
-                                        className={`h-full ${getProgressColor()}`}
-                                        initial={{ width: 0 }}
-                                        animate={{ width: `${formProgress}%` }}
-                                        transition={{ duration: 0.5, ease: "easeOut" }}
-                                    />
-                                </div>
+                        </div>
+                        
+                        <div className="w-full md:w-64 bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-sm font-medium">Profile Strength</span>
+                                <span className="text-sm font-bold">{formProgress}%</span>
                             </div>
+                            <Progress value={formProgress} className="h-2 bg-white/20" indicatorClassName={cn("bg-white transition-all duration-1000")} />
+                            <p className="text-xs mt-2 text-white/70">
+                                {getProgressMessage()}
+                            </p>
                         </div>
                     </div>
                 </motion.div>
 
                 <form onSubmit={handleSubmit}>
-                    <div className="grid md:grid-cols-7 gap-6">
+                    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+                        <TabsList className="grid w-full grid-cols-2 p-1 bg-muted/50 rounded-xl h-auto">
+                            <TabsTrigger 
+                                value="personal" 
+                                className="rounded-lg py-3 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    <span>Personal Information</span>
+                                </div>
+                            </TabsTrigger>
+                            <TabsTrigger 
+                                value="education" 
+                                className="rounded-lg py-3 text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-sm"
+                            >
+                                <div className="flex items-center gap-2">
+                                    <GraduationCap className="w-4 h-4" />
+                                    <span>Education Details</span>
+                                </div>
+                            </TabsTrigger>
+                        </TabsList>
 
-                        {/* Sidebar with navigation tabs */}
-                        <motion.div variants={itemVariants} className="md:col-span-2">
-                            <div className="sticky top-6">
-                                <Card>
-                                    <CardContent className="p-3">
-                                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                            <TabsList className="flex flex-col space-y-1 h-auto">
-                                                <TabsTrigger
-                                                    value="personal"
-                                                    className="w-full justify-start px-3 py-2 h-auto"
-                                                >
-                                                    <div className="flex items-center gap-2 text-left">
-                                                        <Home className="h-4 w-4" />
-                                                        <div>
-                                                            <div className="font-medium">Contact Info</div>
-                                                            <div className="text-xs text-muted-foreground">Address & Phone</div>
-                                                        </div>
-                                                    </div>
-                                                </TabsTrigger>
-
-                                                <TabsTrigger
-                                                    value="education"
-                                                    className="w-full justify-start px-3 py-2 h-auto"
-                                                >
-                                                    <div className="flex items-center gap-2 text-left">
-                                                        <School className="h-4 w-4" />
-                                                        <div>
-                                                            <div className="font-medium">Education</div>
-                                                            <div className="text-xs text-muted-foreground">School & Grade Level</div>
-                                                        </div>
-                                                    </div>
-                                                </TabsTrigger>
-                                            </TabsList>
-                                        </Tabs>
-
-                                        {/* Tips section */}
-                                        <div className="mt-6 bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 border border-amber-100 dark:border-amber-800/30">
-                                            <div className="flex gap-2">
-                                                <AlertCircle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
-                                                <div className="space-y-1">
-                                                    <h3 className="text-sm font-medium text-amber-800 dark:text-amber-300">Why this matters</h3>
-                                                    <p className="text-xs text-amber-700 dark:text-amber-400">
-                                                        Keeping your profile updated helps qualify you for more scholarship opportunities in the Philippines. Many scholarships have specific eligibility requirements based on your location and educational institution.
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </motion.div>
-
-                        {/* Main content area */}
-                        <motion.div variants={itemVariants} className="md:col-span-5 space-y-6 mb-22">
-                            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                                {/* Personal Information Tab */}
-                                <TabsContent value="personal" className="space-y-4 mt-0">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <div className="flex items-center gap-2">
-                                                <Home className="h-5 w-5 text-primary/70" />
-                                                <CardTitle className="text-lg">Contact Information</CardTitle>
-                                            </div>
+                        <AnimatePresence mode="wait">
+                            {activeTab === 'personal' && (
+                                <motion.div
+                                    key="personal"
+                                    initial={{ opacity: 0, x: -20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: 20 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <Card className="border shadow-sm overflow-hidden">
+                                        <CardHeader className="bg-muted/30 pb-4">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <Home className="w-5 h-5 text-primary" />
+                                                Contact Details
+                                            </CardTitle>
                                             <CardDescription>
-                                                Where can we reach you? This information may be shared with scholarship providers.
+                                                Where can we reach you? This information helps us verify your residency.
                                             </CardDescription>
                                         </CardHeader>
-
-                                        <CardContent className="space-y-4">
-                                            <div className="grid gap-4 md:grid-cols-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="address" className="flex items-center gap-1.5">
-                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        Street Address
-                                                        {renderTooltip('Enter your full street address including barangay and subdivision if applicable.')}
-                                                    </Label>
+                                        <CardContent className="p-6 grid gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="address">Street Address</Label>
+                                                <div className="relative">
+                                                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                                     <Input
                                                         id="address"
                                                         value={data.address}
                                                         onChange={(e) => setData('address', e.target.value)}
-                                                        placeholder="123 Rizal Avenue, Brgy. San Miguel"
-                                                        required
+                                                        className="pl-9"
+                                                        placeholder="House No., Street Name, Subdivision, Barangay"
                                                     />
-                                                    {errors.address && (
-                                                        <div className="text-sm text-red-500 flex items-center gap-1">
-                                                            <AlertCircle className="h-3.5 w-3.5" />
-                                                            {errors.address}
-                                                        </div>
-                                                    )}
                                                 </div>
-
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="city" className="flex items-center gap-1.5">
-                                                        <Building className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        City/Municipality
-                                                        {renderTooltip('Select your city or municipality')}
-                                                    </Label>
-                                                    <Input
-                                                        id="city"
-                                                        value={data.city}
-                                                        onChange={(e) => setData('city', e.target.value)}
-                                                        placeholder="Select city/municipality"
-                                                        required
-                                                    />
-                                                    {errors.city && (
-                                                        <div className="text-sm text-red-500 flex items-center gap-1">
-                                                            <AlertCircle className="h-3.5 w-3.5" />
-                                                            {errors.city}
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                {errors.address && <p className="text-xs text-red-500">{errors.address}</p>}
                                             </div>
 
-                                            <div className="grid gap-4 md:grid-cols-2">
+                                            <div className="grid md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="state" className="flex items-center gap-1.5">
-                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        Province
-                                                        {renderTooltip('Select your province in the Philippines')}
-                                                    </Label>
+                                                    <Label htmlFor="city">City / Municipality</Label>
+                                                    <div className="relative">
+                                                        <Building className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            id="city"
+                                                            value={data.city}
+                                                            onChange={(e) => setData('city', e.target.value)}
+                                                            className="pl-9"
+                                                            placeholder="Enter city"
+                                                        />
+                                                    </div>
+                                                    {errors.city && <p className="text-xs text-red-500">{errors.city}</p>}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="state">Province</Label>
                                                     <Input
                                                         id="state"
                                                         value={data.state}
                                                         onChange={(e) => setData('state', e.target.value)}
-                                                        placeholder="Select province (e.g. Benguet, Cebu, Davao)"
-                                                        required
+                                                        placeholder="Enter province"
                                                     />
-                                                    {errors.state && (
-                                                        <div className="text-sm text-red-500 flex items-center gap-1">
-                                                            <AlertCircle className="h-3.5 w-3.5" />
-                                                            {errors.state}
-                                                        </div>
-                                                    )}
+                                                    {errors.state && <p className="text-xs text-red-500">{errors.state}</p>}
                                                 </div>
+                                            </div>
 
+                                            <div className="grid md:grid-cols-2 gap-6">
                                                 <div className="space-y-2">
-                                                    <Label htmlFor="zip_code" className="flex items-center gap-1.5">
-                                                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                                                        Zip Code
-                                                    </Label>
+                                                    <Label htmlFor="zip_code">Zip Code</Label>
                                                     <Input
                                                         id="zip_code"
                                                         value={data.zip_code}
                                                         onChange={(e) => setData('zip_code', e.target.value)}
-                                                        placeholder="1000"
-                                                        required
+                                                        placeholder="e.g. 1000"
                                                     />
-                                                    {errors.zip_code && (
-                                                        <div className="text-sm text-red-500 flex items-center gap-1">
-                                                            <AlertCircle className="h-3.5 w-3.5" />
-                                                            {errors.zip_code}
+                                                    {errors.zip_code && <p className="text-xs text-red-500">{errors.zip_code}</p>}
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="phone_number">Mobile Number</Label>
+                                                    <div className="relative">
+                                                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                        <Input
+                                                            id="phone_number"
+                                                            value={data.phone_number}
+                                                            onChange={(e) => setData('phone_number', e.target.value)}
+                                                            className="pl-9"
+                                                            placeholder="0912 345 6789"
+                                                        />
+                                                    </div>
+                                                    {errors.phone_number && <p className="text-xs text-red-500">{errors.phone_number}</p>}
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                        <CardFooter className="bg-muted/30 py-4 flex justify-between items-center">
+                                            <p className="text-xs text-muted-foreground">
+                                                <span className="text-red-500">*</span> All fields are required
+                                            </p>
+                                            <Button 
+                                                type="button" 
+                                                onClick={() => setActiveTab('education')}
+                                                variant="default"
+                                            >
+                                                Next Step
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                </motion.div>
+                            )}
+
+                            {activeTab === 'education' && (
+                                <motion.div
+                                    key="education"
+                                    initial={{ opacity: 0, x: 20 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -20 }}
+                                    transition={{ duration: 0.2 }}
+                                >
+                                    <Card className="border shadow-sm overflow-hidden">
+                                        <CardHeader className="bg-muted/30 pb-4">
+                                            <CardTitle className="text-lg flex items-center gap-2">
+                                                <School className="w-5 h-5 text-primary" />
+                                                Education Details
+                                            </CardTitle>
+                                            <CardDescription>
+                                                Tell us about your current educational status.
+                                            </CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="p-6 space-y-8">
+                                            
+                                            {/* School Type Selection */}
+                                            <div className="space-y-3">
+                                                <Label className="text-base">Current Level</Label>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div 
+                                                        onClick={() => setData('school_type', 'high_school')}
+                                                        className={cn(
+                                                            "cursor-pointer rounded-xl border-2 p-4 transition-all hover:bg-muted/50 flex flex-col items-center gap-2 text-center",
+                                                            data.school_type === 'high_school' 
+                                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20" 
+                                                                : "border-muted bg-background hover:border-primary/50"
+                                                        )}
+                                                    >
+                                                        <div className={cn("p-2 rounded-full", data.school_type === 'high_school' ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                                                            <BookOpen className="w-5 h-5" />
                                                         </div>
-                                                    )}
+                                                        <div>
+                                                            <p className="font-semibold">High School</p>
+                                                            <p className="text-xs text-muted-foreground">Junior / Senior High</p>
+                                                        </div>
+                                                        {data.school_type === 'high_school' && (
+                                                            <div className="absolute top-2 right-2 text-primary">
+                                                                <CheckCircle2 className="w-4 h-4" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div 
+                                                        onClick={() => setData('school_type', 'college')}
+                                                        className={cn(
+                                                            "cursor-pointer rounded-xl border-2 p-4 transition-all hover:bg-muted/50 flex flex-col items-center gap-2 text-center",
+                                                            data.school_type === 'college' 
+                                                                ? "border-primary bg-primary/5 ring-1 ring-primary/20" 
+                                                                : "border-muted bg-background hover:border-primary/50"
+                                                        )}
+                                                    >
+                                                        <div className={cn("p-2 rounded-full", data.school_type === 'college' ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                                                            <GraduationCap className="w-5 h-5" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-semibold">College</p>
+                                                            <p className="text-xs text-muted-foreground">University / College</p>
+                                                        </div>
+                                                        {data.school_type === 'college' && (
+                                                            <div className="absolute top-2 right-2 text-primary">
+                                                                <CheckCircle2 className="w-4 h-4" />
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
 
+                                            {/* School Selection */}
                                             <div className="space-y-2">
-                                                <Label htmlFor="phone_number" className="flex items-center gap-1.5">
-                                                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    Phone Number
-                                                    {renderTooltip('A mobile number where scholarship providers can contact you. Use format +63 or 09XX for Philippine numbers.')}
-                                                </Label>
-                                                <Input
-                                                    id="phone_number"
-                                                    value={data.phone_number}
-                                                    onChange={e => setData('phone_number', e.target.value)}
-                                                    placeholder="+63 9123456789"
-                                                    required
-                                                />
-                                                {errors.phone_number && (
-                                                    <div className="text-sm text-red-500 flex items-center gap-1">
-                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                        {errors.phone_number}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="flex justify-end pt-2">
-                                                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                                                    <Button
+                                                <Label>School Name</Label>
+                                                <Popover open={openSchoolCombobox} onOpenChange={setOpenSchoolCombobox}>
+                                                    <PopoverTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            role="combobox"
+                                                            aria-expanded={openSchoolCombobox}
+                                                            className="w-full justify-between h-12 text-left font-normal"
+                                                        >
+                                                            {data.school_name ? (
+                                                                <span className="flex items-center gap-2">
+                                                                    <School className="w-4 h-4 text-muted-foreground" />
+                                                                    {data.school_name}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-muted-foreground">Select your school...</span>
+                                                            )}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                                        <Command>
+                                                            <CommandInput placeholder="Search school..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>
+                                                                    <div className="p-4 text-center">
+                                                                        <p className="text-sm text-muted-foreground mb-2">School not found?</p>
+                                                                        <Button 
+                                                                            variant="outline" 
+                                                                            size="sm"
+                                                                            onClick={() => {
+                                                                                setOpenSchoolCombobox(false);
+                                                                                // Ideally we would focus an input here, but for now user can just type in the original input if we allowed it. 
+                                                                                // Since we are replacing the input with this combobox, we need a way to set custom value.
+                                                                                // Let's just use the current search value as the school name if they click this.
+                                                                                // But CommandInput value isn't easily accessible.
+                                                                                // Let's simpler approach: Just allow selecting from list.
+                                                                                // If we want manual entry, we can add a "Other" option or similar.
+                                                                                // For now, let's assume the list is comprehensive or allow a fallback.
+                                                                                toast.info("Please contact support if your school is not listed.");
+                                                                            }}
+                                                                        >
+                                                                            Request to add school
+                                                                        </Button>
+                                                                    </div>
+                                                                </CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {filteredSchools.map((school) => (
+                                                                        <CommandItem
+                                                                            key={school.id}
+                                                                            value={school.school_name}
+                                                                            onSelect={() => {
+                                                                                setData('school_name', school.school_name);
+                                                                                setOpenSchoolCombobox(false);
+                                                                            }}
+                                                                        >
+                                                                            <Check
+                                                                                className={cn(
+                                                                                    "mr-2 h-4 w-4",
+                                                                                    data.school_name === school.school_name ? "opacity-100" : "opacity-0"
+                                                                                )}
+                                                                            />
+                                                                            {school.school_name}
+                                                                        </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                {/* Fallback text input if they can't find it - actually let's just add a small note or toggle */}
+                                                <div className="flex justify-between text-xs text-muted-foreground px-1">
+                                                    <span>Select from the list</span>
+                                                    <button 
                                                         type="button"
-                                                        onClick={() => setActiveTab('education')}
-                                                        className="flex items-center gap-1"
+                                                        onClick={() => setIsManualSchool(!isManualSchool)}
+                                                        className="text-primary hover:underline"
                                                     >
-                                                        Next: Education
-                                                        <School className="ml-1 h-4 w-4" />
-                                                    </Button>
-                                                </motion.div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </TabsContent>
-
-                                {/* Educational Information Tab */}
-                                <TabsContent value="education" className="space-y-4 mt-0">
-                                    <Card>
-                                        <CardHeader className="pb-3">
-                                            <div className="flex items-center gap-2">
-                                                <GraduationCap className="h-5 w-5 text-primary/70" />
-                                                <CardTitle className="text-lg">Educational Information</CardTitle>
-                                            </div>
-                                            <CardDescription>
-                                                Tell us about your current educational status. This helps match you with eligible scholarships.
-                                            </CardDescription>
-                                        </CardHeader>
-
-                                        <CardContent className="space-y-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="school_type" className="flex items-center gap-1.5">
-                                                    <School className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    School Type
-                                                    {renderTooltip('Select whether you are currently attending high school or college.')}
-                                                </Label>
-                                                <Select
-                                                    value={data.school_type}
-                                                    onValueChange={(value: 'high_school' | 'college') => setData('school_type', value)}
-                                                >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Select school type" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="high_school">Junior/Senior High School (Grades 7-12)</SelectItem>
-                                                        <SelectItem value="college">College / University</SelectItem>
-                                                    </SelectContent>
-                                                </Select>
-                                                {errors.school_type && (
-                                                    <div className="text-sm text-red-500 flex items-center gap-1">
-                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                        {errors.school_type}
-                                                    </div>
+                                                        Can't find your school?
+                                                    </button>
+                                                </div>
+                                                
+                                                {isManualSchool && (
+                                                    <motion.div 
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        className="mt-2"
+                                                    >
+                                                        <Label className="text-xs mb-1.5 block">Enter School Name Manually</Label>
+                                                        <Input 
+                                                            value={data.school_name}
+                                                            onChange={(e) => setData('school_name', e.target.value)}
+                                                            placeholder="Type your school name here..."
+                                                            className="bg-amber-50 dark:bg-amber-950/10 border-amber-200"
+                                                        />
+                                                    </motion.div>
                                                 )}
+                                                
+                                                {errors.school_name && <p className="text-xs text-red-500">{errors.school_name}</p>}
                                             </div>
 
+                                            {/* Grade/Year Level */}
                                             <div className="space-y-2">
-                                                <Label htmlFor="school_level" className="flex items-center gap-1.5">
-                                                    <BookOpen className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    {data.school_type === 'high_school' ? 'Grade Level' : 'Year Level'}
-                                                    {renderTooltip(data.school_type === 'high_school' ?
-                                                        'Your current grade level in K-12 (Grades 7-12)' :
-                                                        'Your current year level in college/university (1st-6th Year)')}
-                                                </Label>
+                                                <Label>Grade / Year Level</Label>
                                                 <Select
                                                     value={data.school_level}
                                                     onValueChange={(value) => setData('school_level', value)}
                                                 >
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder={data.school_type === 'high_school' ?
-                                                            "Select your grade level" :
-                                                            "Select your year level"} />
+                                                    <SelectTrigger className="h-12">
+                                                        <SelectValue placeholder="Select level" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {schoolLevelOptions.map(level => (
-                                                            <SelectItem key={level} value={level}>{level}</SelectItem>
+                                                        {schoolLevelOptions.map((option) => (
+                                                            <SelectItem key={option} value={option}>
+                                                                {option}
+                                                            </SelectItem>
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                {errors.school_level && (
-                                                    <div className="text-sm text-red-500 flex items-center gap-1">
-                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                        {errors.school_level}
-                                                    </div>
-                                                )}
+                                                {errors.school_level && <p className="text-xs text-red-500">{errors.school_level}</p>}
                                             </div>
 
-                                            <div className="space-y-2">
-                                                <Label htmlFor="school_name" className="flex items-center gap-1.5">
-                                                    <Building className="h-3.5 w-3.5 text-muted-foreground" />
-                                                    School Name
-                                                    {renderTooltip('Type your school name. We\'ll show suggestions if available, or you can enter the complete name manually.')}
-                                                </Label>
-                                                <div className="relative">
-                                                    <div className="relative">
-                                                        <Input
-                                                            id="school_name"
-                                                            value={schoolSearchValue}
-                                                            onChange={(e) => {
-                                                                const value = e.target.value;
-                                                                setSchoolSearchValue(value);
-                                                                setData('school_name', value);
-                                                                setShowSchoolSuggestions(value.length >= 2);
-                                                            }}
-                                                            onFocus={() => {
-                                                                if (schoolSearchValue.length >= 2) {
-                                                                    setShowSchoolSuggestions(true);
-                                                                }
-                                                            }}
-                                                            onBlur={() => {
-                                                                // Delay hiding suggestions to allow clicking on them
-                                                                setTimeout(() => setShowSchoolSuggestions(false), 200);
-                                                            }}
-                                                            placeholder="Type your school name..."
-                                                            className="pr-8"
-                                                            required
-                                                        />
-                                                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                    </div>
-
-                                                    {/* School suggestions dropdown */}
-                                                    {showSchoolSuggestions && filteredSchools.length > 0 && (
-                                                        <motion.div
-                                                            initial={{ opacity: 0, y: -10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: -10 }}
-                                                            className="absolute z-50 w-full mt-1 bg-background border border-border rounded-md shadow-lg max-h-60 overflow-auto"
-                                                        >
-                                                            <div className="p-2 text-xs text-muted-foreground border-b">
-                                                                <div className="flex items-center gap-1">
-                                                                    <School className="h-3 w-3" />
-                                                                    Suggested schools
-                                                                </div>
-                                                            </div>
-                                                            {filteredSchools.map((school, index) => (
-                                                                <button
-                                                                    key={`${school.school_name}-${index}`}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        setSchoolSearchValue(school.school_name);
-                                                                        setData('school_name', school.school_name);
-                                                                        setShowSchoolSuggestions(false);
-                                                                    }}
-                                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors border-b border-border last:border-b-0"
-                                                                >
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Building className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                                                        <span className="truncate">{school.school_name}</span>
-                                                                    </div>
-                                                                </button>
-                                                            ))}
-                                                        </motion.div>
-                                                    )}
-                                                </div>
-
-                                                {/* Helpful hint */}
-                                                <div className="text-xs text-muted-foreground flex items-start gap-1.5 mt-2">
-                                                    <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                                                    <div>
-                                                        <p className="font-medium">Can't find your school?</p>
-                                                        <p>No problem! Just type the complete and official name of your school.
-                                                            Make sure to include the full name as it appears on your enrollment documents
-                                                            (e.g., "Ateneo de Manila University" not just "Ateneo").</p>
-                                                    </div>
-                                                </div>
-
-                                                {errors.school_name && (
-                                                    <div className="text-sm text-red-500 flex items-center gap-1 pt-1">
-                                                        <AlertCircle className="h-3.5 w-3.5" />
-                                                        {errors.school_name}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="pt-4 flex items-center justify-between">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() => setActiveTab('personal')}
-                                                    className="flex items-center gap-1.5"
-                                                >
-                                                    <Home className="h-4 w-4" />
-                                                    Back to Contact Info
+                                            <div className="flex justify-end pt-2">
+                                                <Button type="button" variant="outline" onClick={() => setActiveTab('personal')} className="mr-auto">
+                                                    Back
                                                 </Button>
-
-                                                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                                                    <Button
-                                                        type="submit"
-                                                        disabled={processing}
-                                                        className="flex items-center gap-1.5"
-                                                    >
-                                                        <Save className="h-4 w-4" />
-                                                        {processing ? 'Saving...' : 'Save Profile'}
-                                                    </Button>
-                                                </motion.div>
+                                                <Button type="submit" disabled={processing} className="min-w-[120px]">
+                                                    {processing ? (
+                                                        <span className="flex items-center gap-2">
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            Saving...
+                                                        </span>
+                                                    ) : (
+                                                        <span className="flex items-center gap-2">
+                                                            <Save className="w-4 h-4" />
+                                                            Save Profile
+                                                        </span>
+                                                    )}
+                                                </Button>
                                             </div>
                                         </CardContent>
                                     </Card>
-                                </TabsContent>
-                            </Tabs>
-                        </motion.div>
-                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </Tabs>
                 </form>
-            </motion.div>
+            </div>
         </AppLayout>
     );
 }
