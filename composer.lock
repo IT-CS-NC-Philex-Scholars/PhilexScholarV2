@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "beddac2cfd2d2f709189aa9a398db706",
+    "content-hash": "a737d28b0a251dfa6dfaf4914fdc7696",
     "packages": [
         {
             "name": "blaspsoft/socialiteplus",
@@ -12510,8 +12510,5 @@
         "ext-sqlite3": "*"
     },
     "platform-dev": {},
-    "platform-overrides": {
-        "php": "8.4.0"
-    },
     "plugin-api-version": "2.9.0"
 }
