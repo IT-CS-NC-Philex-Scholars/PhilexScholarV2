@@ -1,14 +1,14 @@
 {
-  "version": "0.1.1-dev.1",
-  "image": "docker.io/yukazaki/philexscholarv2:v0.1.1-dev.1",
-  "commit": "8a3a71a28665a7558f913f7dda4623ad907518e4",
+  "version": "0.1.2-dev.1",
+  "image": "docker.io/yukazaki/philexscholarv2:v0.1.2-dev.1",
+  "commit": "e44b67b4b3aae56ac3d75367f02aa4aed8c07b0d",
   "branch": "main",
-  "timestamp": "2025-12-15T03:17:14Z",
-  "build_url": "https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2/actions/runs/20219266781",
+  "timestamp": "2025-12-15T03:52:05Z",
+  "build_url": "https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2/actions/runs/20219822052",
   "release_type": "patch",
   "changelog": {
-    "current": "Version 0.1.1-dev.1 - updated PRofile student",
-    "previous": "1.0.0"
+    "current": "Version 0.1.2-dev.1 - Merge branch 'main' of https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2",
+    "previous": "0.1.1-dev.1"
   },
   "metadata": {
     "author": "yukazakiri",
