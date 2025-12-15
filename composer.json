@@ -13,7 +13,6 @@
     "require": {
         "php": "^8.2",
         "ext-intl": "*",
-        "ext-pcntl": "*",
         "ext-sqlite3": "*",
         "blaspsoft/socialiteplus": "^1.0",
         "inertiajs/inertia-laravel": "^2.0",
@@ -37,8 +36,7 @@
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^3.7",
-        "pestphp/pest-plugin-type-coverage": "^3.4",
-        "soloterm/solo": "^0.5.0"
+        "pestphp/pest-plugin-type-coverage": "^3.4"
     },
     "autoload": {
         "psr-4": {
