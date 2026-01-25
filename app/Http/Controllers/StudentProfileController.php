@@ -22,10 +22,12 @@ final class StudentProfileController extends Controller
         $user = Auth::user();
         $profile = $user->studentProfile;
         $allSchoolData = StudentProfile::select('school_name', 'school_type')->whereNotNull('school_name')->whereNotNull('school_type')->distinct()->get();
+        $allCourseData = StudentProfile::select('course')->whereNotNull('course')->distinct()->get();
 
         return Inertia::render('Student/Profile/Edit', [
             'profile' => $profile,
             'allSchoolData' => $allSchoolData,
+            'allCourseData' => $allCourseData,
         ]);
     }
 
@@ -43,14 +45,21 @@ final class StudentProfileController extends Controller
             'school_type' => ['required', 'in:high_school,college'],
             'school_level' => ['required', 'string', 'max:255'],
             'school_name' => ['required', 'string', 'max:255'],
+            'course' => ['nullable', 'string', 'max:255'],
         ]);
 
         $user = Auth::user();
 
         if ($user->studentProfile) {
             $user->studentProfile->update($validated);
+            $wasCreated = false;
         } else {
             $user->studentProfile()->create($validated);
+            $wasCreated = true;
+        }
+
+        if ($request->boolean('onboarding') || $wasCreated) {
+            return Redirect::route('dashboard')->with('success', 'Profile completed! Welcome to your dashboard.');
         }
 
         return Redirect::route('student.profile.edit')->with('success', 'Profile updated successfully.');
@@ -65,17 +74,35 @@ final class StudentProfileController extends Controller
         $profile = $user->studentProfile;
 
         $applications = [];
+        $recommendedScholarships = [];
 
         if ($profile) {
             $applications = $profile->scholarshipApplications()
                 ->with(['scholarshipProgram'])
                 ->latest()
                 ->get();
+
+            // Fetch recommended scholarships based on profile
+            $recommendedScholarships = \App\Models\ScholarshipProgram::where('active', true)
+                ->where('application_deadline', '>=', now())
+                ->where(function ($query) use ($profile) {
+                    $query->where('school_type_eligibility', 'both')
+                        ->orWhere('school_type_eligibility', $profile->school_type);
+                })
+                ->where('min_gpa', '<=', $profile->gpa ?? 4.0) // Default to 4.0 if no GPA to be safe, or 0?
+                ->limit(3)
+                ->get();
         }
+
+        $allSchoolData = StudentProfile::select('school_name', 'school_type')->whereNotNull('school_name')->whereNotNull('school_type')->distinct()->get();
+        $allCourseData = StudentProfile::select('course')->whereNotNull('course')->distinct()->get();
 
         return Inertia::render('Student/Dashboard', [
             'hasProfile' => $profile !== null,
             'applications' => $applications,
+            'recommendedScholarships' => $recommendedScholarships,
+            'allSchoolData' => $allSchoolData,
+            'allCourseData' => $allCourseData,
         ]);
     }
 }

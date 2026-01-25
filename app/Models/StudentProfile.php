@@ -54,6 +54,7 @@ final class StudentProfile extends Model
         'school_name',
         'student_id',
         'gpa',
+        'course',
     ];
 
     /**
