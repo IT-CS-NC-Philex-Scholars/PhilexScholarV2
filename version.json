@@ -1,18 +1,18 @@
 {
-  "version": "0.1.6-dev.1",
-  "image": "docker.io/yukazaki/philexscholarv2:v0.1.6-dev.1",
-  "commit": "c431d05e2d2c5777887910a31a9c1a5a2aa1de40",
+  "version": "0.2.0",
+  "image": "docker.io/yukazaki/philexscholarv2:v0.2.0",
+  "commit": "ec72ee867439f9f0f2ff1fcdb64a96278934dc78",
   "branch": "main",
-  "timestamp": "2026-01-25T10:09:01Z",
-  "build_url": "https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2/actions/runs/21330829536",
-  "release_type": "patch",
+  "timestamp": "2026-01-25T12:17:04Z",
+  "build_url": "https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2/actions/runs/21332398199",
+  "release_type": "official",
   "changelog": {
-    "current": "Version 0.1.6-dev.1 - revamped onboarding in dashboard",
-    "previous": "0.1.5-dev.1"
+    "current": "Version 0.2.0 - manual release",
+    "previous": "0.1.6-dev.1"
   },
   "metadata": {
     "author": "yukazakiri",
-    "workflow": "Auto Pre-release and Docker Tag",
+    "workflow": "Manual Official Release",
     "repository": "IT-CS-NC-Philex-Scholars/PhilexScholarV2"
   }
 }
