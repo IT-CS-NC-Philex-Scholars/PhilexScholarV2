@@ -30,6 +30,7 @@ Route::middleware(['auth', 'verified', 'admin'])->prefix('admin')->name('admin.'
 
     // User management
     Route::resource('users', UserController::class);
+    Route::post('/users/{user}/impersonate', [UserController::class, 'impersonate'])->name('users.impersonate');
 
     // Student management
     Route::get('/students/create', [StudentController::class, 'create'])->name('students.create');

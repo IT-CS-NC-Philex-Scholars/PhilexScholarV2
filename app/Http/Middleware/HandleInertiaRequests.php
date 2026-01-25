@@ -55,6 +55,7 @@ final class HandleInertiaRequests extends Middleware
             'quote' => ['message' => mb_trim($message), 'author' => mb_trim($author)],
             'auth' => [
                 'user' => $request->user(),
+                'isImpersonating' => $request->session()->has('impersonator_id'),
             ],
             'ziggy' => fn (): array => [
                 ...(new Ziggy)->toArray(),

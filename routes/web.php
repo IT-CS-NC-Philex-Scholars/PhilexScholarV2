@@ -60,6 +60,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         return back()->with('success', 'Test notification sent!');
     })->name('test-notification');
+
+    // Impersonation
+    Route::post('/stop-impersonating', [App\Http\Controllers\Admin\UserController::class, 'stopImpersonating'])->name('stop-impersonating');
 });
 
 // Development-only quick login routes
@@ -67,21 +70,25 @@ if (app()->environment('local', 'development')) {
     Route::prefix('dev')->name('dev.')->group(function () {
         Route::get('/login/admin', function () {
             Auth::loginUsingId(1); // Admin user ID from seeder
+
             return redirect()->route('dashboard');
         })->name('login.admin');
 
         Route::get('/login/student', function () {
             Auth::loginUsingId(2); // Student user ID from seeder (John Doe)
+
             return redirect()->route('dashboard');
         })->name('login.student');
 
         Route::get('/login/jane', function () {
             Auth::loginUsingId(3); // Jane Smith user ID from seeder
+
             return redirect()->route('dashboard');
         })->name('login.jane');
 
         Route::get('/login/bob', function () {
             Auth::loginUsingId(4); // Bob Johnson user ID from seeder
+
             return redirect()->route('dashboard');
         })->name('login.bob');
     });

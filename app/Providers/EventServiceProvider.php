@@ -16,7 +16,7 @@ class EventServiceProvider extends ServiceProvider
      */
     protected $listen = [
         Registered::class => [
-            LinkStudentProfileToUser::class,
+            // LinkStudentProfileToUser::class,
         ],
     ];
 

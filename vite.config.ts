@@ -9,7 +9,9 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.tsx'],
             ssr: 'resources/js/ssr.tsx',
-            refresh: true,
+            refresh: {
+                paths: ['resources/views/**', 'routes/**', 'app/Models/**', 'app/Providers/**', 'app/Http/Controllers/Controller.php', 'lang/**'],
+            },
         }),
         react(),
         tailwindcss(),
