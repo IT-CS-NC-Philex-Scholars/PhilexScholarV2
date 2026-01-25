@@ -1,14 +1,14 @@
 {
-  "version": "0.1.5-dev.1",
-  "image": "docker.io/yukazaki/philexscholarv2:v0.1.5-dev.1",
-  "commit": "b8ab59081f149b866e34815174a5e9f0cb59c0fa",
+  "version": "0.1.6-dev.1",
+  "image": "docker.io/yukazaki/philexscholarv2:v0.1.6-dev.1",
+  "commit": "c431d05e2d2c5777887910a31a9c1a5a2aa1de40",
   "branch": "main",
-  "timestamp": "2026-01-25T09:07:34Z",
-  "build_url": "https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2/actions/runs/21330081234",
+  "timestamp": "2026-01-25T10:09:01Z",
+  "build_url": "https://github.com/IT-CS-NC-Philex-Scholars/PhilexScholarV2/actions/runs/21330829536",
   "release_type": "patch",
   "changelog": {
-    "current": "Version 0.1.5-dev.1 - added user impersonation",
-    "previous": "0.1.4-dev.1"
+    "current": "Version 0.1.6-dev.1 - revamped onboarding in dashboard",
+    "previous": "0.1.5-dev.1"
   },
   "metadata": {
     "author": "yukazakiri",
